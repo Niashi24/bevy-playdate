@@ -1,0 +1,11 @@
+[package]
+name = "bevy_playdate"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+playdate = "*"
+bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false }
+bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false }
+derive_more = { version = "1.0.0", default-features = false, features = ["full"] }
+hashbrown = { version = "0.15.1", default-features = false, features = ["default-hasher"] }
