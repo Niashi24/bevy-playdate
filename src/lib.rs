@@ -1,32 +1,27 @@
 #![feature(once_cell_get_mut)]
+#![feature(debug_closure_helpers)]
 #![no_std]
 extern crate alloc;
+#[macro_use]
+extern crate playdate as pd;
 
 mod game;
 mod ui_test;
 mod curve;
 mod builder;
 
-#[macro_use]
-extern crate playdate as pd;
-
-use alloc::vec;
-use core::cell::{LazyCell, OnceCell};
-use core::ffi::*;
-use core::ptr::NonNull;
 use bevy_app::App;
-use bevy_ecs::prelude::World;
-use pd::sys::EventLoopCtrl;
-use pd::sys::ffi::PlaydateAPI;
-use pd::system::update::UpdateCtrl;
+use core::cell::OnceCell;
+use core::ptr::NonNull;
 use pd::display::Display;
-use pd::graphics::*;
-use pd::graphics::text::*;
 use pd::graphics::bitmap::*;
-use pd::system::prelude::*;
-use pd::sound::prelude::*;
-use pd::fs::Path;
+use pd::graphics::text::*;
+use pd::graphics::*;
 use pd::sprite::draw_sprites;
+use pd::sys::ffi::PlaydateAPI;
+use pd::sys::EventLoopCtrl;
+use pd::system::prelude::*;
+use pd::system::update::UpdateCtrl;
 
 /// Game state
 struct State {

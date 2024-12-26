@@ -11,12 +11,16 @@ use playdate::graphics::color::Color;
 use playdate::graphics::{BitmapFlip, BitmapFlipExt, Graphics};
 use playdate::sys::ffi::{LCDBitmap, LCDSolidColor, LCDSprite, PDRect};
 use playdate::sys::traits::AsRaw;
+use playdate::sprite::Sprite as PDSprite;
+use derive_more::Deref;
 
-#[derive(Component)]
+#[derive(Component, Clone, Deref)]
 #[component(on_add = add_to_display_list)]
 #[component(on_replace = remove_from_display_list)]
 pub struct Sprite {
-    ptr: NonNull<LCDSprite>,
+    #[deref]
+    spr: PDSprite,
+    /// TODO: Replace with Handle
     pub bitmap: Option<Rc<Bitmap>>
 }
 
@@ -34,33 +38,19 @@ unsafe impl Send for Sprite {}
 unsafe impl Sync for Sprite {}
 
 impl Sprite {
+    /// Creates a new, empty Sprite
     pub fn new() -> Self {
-        let ptr = NonNull::new(unsafe { api!(sprite).newSprite.unwrap()() }).unwrap();
+        let spr = PDSprite::new();
 
-        Sprite { ptr, bitmap: None }
+        Sprite { spr, bitmap: None }
     }
     
     pub fn new_from_bitmap(bitmap: Rc<Bitmap>, flip: BitmapFlip) -> Self {
-        let ptr = NonNull::new(unsafe { api!(sprite).newSprite.unwrap()() }).unwrap();
-        
-        unsafe {
-            api!(sprite).setImage.unwrap()(ptr.as_ptr(), bitmap.as_raw(), flip);
-        }
-        
-        // unsafe {
-        //     let (w, h) = bitmap.size();
-        //     for y in 0..h {
-        //         println!("{}", (0..w).map(|x| match bitmap.pixel_at(x, y) {
-        //             LCDSolidColor::kColorBlack => "X",
-        //             LCDSolidColor::kColorWhite => "O",
-        //             LCDSolidColor::kColorClear => " ",
-        //             LCDSolidColor::kColorXOR => "?",
-        //         }).collect::<String>());
-        //     }
-        // }
+        let spr = PDSprite::new();
+        spr.set_image(&*bitmap, flip);
         
         Self {
-            ptr,
+            spr,
             bitmap: Some(bitmap),
         }
     }
@@ -77,14 +67,6 @@ impl Sprite {
         Self::new_from_bitmap(Rc::new(image), BitmapFlip::Unflipped)
     }
     
-    pub unsafe fn from_ptr(ptr: NonNull<LCDSprite>, bitmap: Option<Rc<Bitmap>>) -> Self {
-        Sprite { ptr, bitmap }
-    }
-    
-    pub unsafe fn as_raw(&self) -> NonNull<LCDSprite> {
-        self.ptr
-    }
-    
     pub fn bitmap(&self) -> Option<Rc<Bitmap>> {
         self.bitmap.clone()
     }
@@ -92,49 +74,18 @@ impl Sprite {
     /// Add this sprite to the display list, so that it is drawn in the current scene.
     /// This is automatically called when inserting this into an entity.
     pub fn add_to_display_list(&self) {
-        unsafe {
-            api!(sprite).addSprite.unwrap()(self.ptr.as_ptr());
-        }
+        self.spr.add();
     }
 
     /// Remove this sprite to the display list, so that it is drawn in the current scene.
     /// This is automatically called when inserting this into an entity.
     pub fn remove_from_display_list(&self) {
-        println!("removed");
-        unsafe {
-            api!(sprite).removeSprite.unwrap()(self.ptr.as_ptr());
-        }
-    }
-    
-    pub fn move_to(&mut self, x: f32, y: f32) {
-        unsafe {
-            api!(sprite).moveTo.unwrap()(self.ptr.as_ptr(), x, y);
-        }
-    }
-    
-    pub fn set_center(&mut self, x: f32, y: f32) {
-        unsafe {
-            api!(sprite).setCenter.unwrap()(self.ptr.as_ptr(), x, y);
-        }
+        self.spr.remove();
     }
 }
 
 impl Default for Sprite {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-impl Drop for Sprite {
-    fn drop(&mut self) {
-        unsafe { api!(sprite).freeSprite.unwrap()(self.ptr.as_ptr()) };
-    }
-}
-
-impl Clone for Sprite {
-    fn clone(&self) -> Self {
-        unsafe {
-            Self::from_ptr(NonNull::new(api!(sprite).copy.unwrap()(self.ptr.as_ptr())).unwrap(), self.bitmap.clone())
-        }
     }
 }

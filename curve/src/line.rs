@@ -23,6 +23,10 @@ impl CurveSegment for LineSegment {
         self.end - self.start
     }
 
+    fn curvature(&self) -> f32 {
+        0.0
+    }
+
     fn bounds(&self) -> (Vec2, Vec2) {
         (
             Vec2::new(

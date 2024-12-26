@@ -1,36 +1,23 @@
-﻿use alloc::{format, vec};
-use alloc::rc::Rc;
+﻿use alloc::vec;
 use alloc::vec::Vec;
-use core::ffi::c_int;
-use core::mem::swap;
-use core::ops::Deref;
+use crate::builder::builders::{arc, line};
+use crate::builder::{CurveBuilder, Joint2, JointConnection, MovingSplineDot, Segment};
+use crate::curve::{BCurve, BCurveFallSystem};
 use bevy_app::{App, Update};
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ScheduleLabel;
 use bevy_ecs::system::RunSystemOnce;
-use glam::{FloatExt, Vec2};
-use pd::graphics::api::{Api, Cache};
-use pd::graphics::color::{Color, LCDColorConst};
-use pd::graphics::{BitmapFlip, Graphics};
-use pd::sys::ffi::LCDColor;
-use pd::sys::traits::AsRaw;
-use pd::system::prelude::PDDateTime;
-use playdate::system::System as PDSystem;
-use rand::{Rng, SeedableRng};
-use bevy_playdate::input::{AccelerometerInput, CrankInput, InputPlugin};
+use bevy_playdate::input::{CrankInput, InputPlugin};
 use bevy_playdate::sprite::Sprite;
-use curve::BSpline;
-use crate::curve::{BCurve, BCurveFallSystem};
-use num_traits::float::Float;
-use num_traits::{Euclid, FloatConst};
-use pd::graphics::bitmap::Bitmap;
-use bevy_playdate::dbg;
 use bevy_playdate::time::{Time, TimePlugin};
-use curve::arc::ArcSegment;
-use curve::line::LineSegment;
 use curve::traits::{CurveSegment, CurveType};
-use crate::builder::{CurveBuilder, MovingSplineDot, Segment};
-use crate::builder::builders::{arc_curvature_length, arc, line};
+use glam::Vec2;
+use num_traits::float::Float;
+use num_traits::Euclid;
+use pd::graphics::Graphics;
+use playdate::system::System as PDSystem;
+use rand::SeedableRng;
+use curve::line::LineSegment;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, ScheduleLabel)]
 pub struct AppUpdate;
@@ -147,10 +134,94 @@ pub fn register_systems(app: &mut App) {
         .push(line(50.0))
         .build(&mut app.world_mut().commands(), 1);
     
+    test();
+    
+    // let test = Joint2::new
+    
     
     // app.world_mut().spawn(())
     
     // schedule.run(world);
+}
+
+fn test() {
+    // testing >- fork shape
+    let mut test_world = World::new();
+    // 0 -> top, 1 -> bottom, 2 -> right
+    let mut segments = Vec::with_capacity(3);
+    for _ in 0..3 {
+        segments.push(test_world.spawn_empty().id());
+    }
+    // 0 -> top start
+    // 1 -> bottom start
+    // 2 -> right end
+    // 3 -> middle joint
+    let mut joints = Vec::with_capacity(4);
+    for _ in 0..4 {
+        joints.push(test_world.spawn_empty().id());
+    }
+    
+    test_world.entity_mut(segments[0])
+        .insert(Segment {
+            curve: CurveType::Line(LineSegment {
+                start: Vec2::new(-1.0, 1.0),
+                end: Vec2::ZERO,
+            }),
+            parent: Entity::PLACEHOLDER,
+            start_joint: joints[0],
+            end_joint: joints[3],
+        });
+
+    test_world.entity_mut(segments[1])
+        .insert(Segment {
+            curve: CurveType::Line(LineSegment {
+                start: Vec2::new(-1.0, -1.0),
+                end: Vec2::ZERO,
+            }),
+            parent: Entity::PLACEHOLDER,
+            start_joint: joints[1],
+            end_joint: joints[3],
+        });
+
+    test_world.entity_mut(segments[2])
+        .insert(Segment {
+            curve: CurveType::Line(LineSegment {
+                start: Vec2::ZERO,
+                end: Vec2::ONE,
+            }),
+            parent: Entity::PLACEHOLDER,
+            start_joint: joints[3],
+            end_joint: joints[2],
+        });
+    
+    test_world.entity_mut(joints[3])
+        .insert(Joint2 {
+            connections: vec![
+                JointConnection {
+                    id: segments[0],
+                    t: 1.0,
+                },
+                JointConnection {
+                    id: segments[1],
+                    t: 1.0,
+                },
+                JointConnection {
+                    id: segments[2],
+                    t: 0.0,
+                },
+            ],
+        });
+    
+    test_world.run_system_once(
+        move |
+            q_joints: Query<&Joint2>,
+            q_segments: Query<&Segment>,
+        | {
+            let joint = q_joints.get(joints[3]).unwrap();
+            
+        }
+    ).unwrap();
+    
 }
 
 fn rotate(v: Vec2, angle: f32) -> Vec2 {

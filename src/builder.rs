@@ -1,14 +1,22 @@
 ﻿use alloc::rc::Rc;
 use alloc::vec::Vec;
+use core::cmp::Ordering;
+use core::f32::consts::TAU;
+use core::fmt::{Debug, Formatter};
+use num_traits::Euclid;
 use core::mem::swap;
+use core::ops::Range;
+use arrayvec::ArrayVec;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::Commands;
+use bevy_ecs::prelude::{Commands, Query};
+use bevy_math::Dir2;
 use glam::{FloatExt, Vec2};
 use pd::graphics::api::Api;
 use pd::graphics::bitmap::{Bitmap, Color, LCDColorConst};
 use pd::graphics::{BitmapFlip, Graphics};
 use pd::sys::ffi::LCDColor;
+use smallvec::{smallvec, SmallVec};
 use bevy_playdate::dbg;
 use bevy_playdate::sprite::Sprite;
 use curve::arc::ArcSegment;
@@ -20,6 +28,11 @@ pub struct MovingSplineDot {
     pub t: f32,
     pub v: f32,
     pub spline_entity: Entity,
+}
+
+pub enum DotAttach {
+    Segment(Entity),
+    None,
 }
 
 pub struct MovingSplineDot2 {
@@ -132,11 +145,217 @@ impl Segment {
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-enum JointExit {
+pub enum JointEnter {
     /// previous segment was t = 1
+    /// going from t = 1 of previous to t = 0 of current
     Start,
-    /// next segment is t = 0
+    /// going from t = 0 of previous to t = 1 of current
     End,
+}
+
+impl JointEnter {
+    /// returns the t-value of the segment we're entering the joint from
+    pub fn t(&self) -> f32 {
+        match self {
+            JointEnter::Start => 1.0,
+            JointEnter::End => 0.0,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Debug, Component)]
+pub struct Joint2 {
+    pub connections: Vec<JointConnection>,
+}
+
+impl Joint2 {
+    pub fn new(connections: Vec<JointConnection>) -> Self {
+        // let space = JointSpace::new(&connections, query);
+        
+        Joint2 {
+            connections,
+            // space,
+        }
+    }
+    
+    /// Rules with examples:
+    pub fn enter(
+        &self,
+        v: &mut f32,
+        gravity_dir: Dir2,
+        enter_segment_entity: Entity,
+        t_enter: f32,
+        q_segment: Query<&Segment>,
+    ) {
+        let enter_segment = q_segment.get(enter_segment_entity).unwrap();
+        let enter_vel = enter_segment.curve.velocity(t_enter).normalize_or_zero() * *v;
+        // let target_vel = enter_vel + gravity;
+        // let target_angle = target_vel.to_angle();
+        // 
+        // let mut exit = None;
+        // for connection in self.connections.iter() {
+        //     if connection.id == enter_segment_entity {
+        //         continue;
+        //     }
+        // 
+        //     let segment = q_segment.get(connection.id).unwrap();
+        //     let exit_dir = segment.curve.velocity(connection.t).normalize_or_zero();
+        //     match exit.as_mut() {
+        //         None => exit = Some((segment, exit_dir)),
+        //         Some((seg, dir)) => {
+        //             // let v_kept_old = dir.dot(enter_dir).max(0.0);
+        //             // let v_kept_new = exit_dir.dot(enter_dir).max(0.0);
+        //             // if v_kept_new
+        //         }
+        //     }
+        // }
+
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Debug)]
+pub struct JointConnection {
+    pub id: Entity,
+    /// The t-value on the curve this joint exits onto.
+    /// 
+    /// If we were to evaluate the curve in `id` at this
+    /// t-value, the joint would be at that position
+    pub t: f32,
+}
+
+#[derive(Clone, PartialEq)]
+struct JointSpace {
+    ranges: Vec<(Range<f32>, usize)>,
+}
+
+impl Debug for JointSpace {
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        let mut list = f.debug_list();
+        
+        for (r, i) in self.ranges.iter() {
+            list.entry_with(|f| {
+                write!(f, r#"r=1\left\{{{}\le\theta<{}\right\}}"#, r.start, r.end)
+            });
+        }
+        
+        list.finish()
+    }
+}
+
+fn lerp_angle(a: f32, b: f32, t: f32) -> f32 {
+    let diff = (b - a) % TAU;
+    let distance = ((2.0 * diff) % TAU) - diff;
+    a + distance * t
+}
+
+impl JointSpace {
+    pub fn new(
+        connections: &[JointConnection],
+        segment: Query<&Segment>,
+    ) -> Self {
+        let mut angle_curvature = segment.iter_many(connections.iter().map(|x| x.id))
+            .zip(connections.iter().enumerate())
+            .map(|(segment, (i, connection))| {
+                let angle = segment.curve.velocity(connection.t).to_angle();
+                let curvature = segment.curve.curvature();
+                (angle, curvature, i)
+            })
+            .collect::<Vec<_>>();
+        
+        angle_curvature.sort_by(|a, b| a.0.total_cmp(&b.0)
+            .then(a.1.total_cmp(&b.1)));
+
+        let mut result: Vec<(f32, SmallVec<[usize; 1]>)> = Vec::new();
+
+        for (key, _, idx) in angle_curvature {
+            // If `key` matches the last group's key, add `value` to the group's SmallVec.
+            if let Some((last_key, indices)) = result.last_mut() {
+                if *last_key == key {
+                    indices.push(idx);
+                    continue;
+                }
+            }
+
+            // Otherwise, create a new group.
+            result.push((key, smallvec![idx]));
+        }
+        
+        let mut ranges_unsplit = Vec::new();
+        
+        for (i, (angle, indices)) in result.iter().enumerate() {
+            let before = if i == 0 {
+                result.last().unwrap().0
+            } else {
+                result[i - 1].0
+            };
+            
+            let after = if i == result.len() - 1 {
+                result.first().unwrap().0
+            } else {
+                result[i + 1].0
+            };
+            
+            let angle = *angle;
+            let start = lerp_angle(before, angle, 0.5);
+            let end = lerp_angle(angle, after, 0.5);
+            
+            const MIN_ANGLE: f32 = 0.174533;  // 10 degrees
+            
+            if indices.len() == 1 {
+                ranges_unsplit.push((start..end, indices[0]));
+            } else {
+                let mut previous_end = start;
+                for i in 0..indices.len() - 1 {
+                    let end = 2 * (i as i32 + 1) - indices.len() as i32;
+                    let end = angle + (end as f32) * MIN_ANGLE;
+
+                    ranges_unsplit.push((previous_end..end, indices[i]));
+
+                    previous_end = end;
+                }
+                ranges_unsplit.push((previous_end..end, *indices.last().unwrap()));
+            }
+        }
+        
+        let ranges = ranges_unsplit.into_iter()
+            .flat_map(|(mut r, i)| {
+                assert_eq!(r.start.total_cmp(&r.end), Ordering::Less);
+                
+                while r.start < 0.0 {
+                    r.start += TAU;
+                    r.end += TAU;
+                }
+                
+                if r.end > TAU {
+                    let split = 0.0..(r.end - TAU);
+                    r.end = TAU;
+                    ArrayVec::from([(r, i), (split, i)])
+                } else {
+                    ArrayVec::from_iter([(r, i)])
+                }
+            })
+            .collect();
+        
+        dbg!(Self {
+            ranges,
+        })
+    }
+    
+    pub fn eval(&self, mut angle: f32) -> usize {
+        angle = angle.rem_euclid(&TAU);
+        
+        let idx = self.ranges.binary_search_by(|(range, _)| {
+            if angle < range.start {
+                Ordering::Greater
+            } else if angle >= range.end {
+                Ordering::Less
+            } else {
+                Ordering::Equal
+            }
+        }).unwrap();
+        
+        self.ranges[idx].1
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Component)]
@@ -153,7 +372,7 @@ pub enum Joint {
     /// Stops at this segment, velocity canceled
     Stop {
         from: Entity,
-        side: JointExit,
+        side: JointEnter,
     },
     // /// Falls off the edge
     // Fall {
@@ -163,7 +382,7 @@ pub enum Joint {
 }
 
 impl Joint {
-    pub fn new_stop(start: Entity, side: JointExit) -> Self {
+    pub fn new_stop(start: Entity, side: JointEnter) -> Self {
         Self::Stop {
             from: start,
             side,
@@ -192,7 +411,7 @@ impl Joint {
     pub fn enter_joint(
         &self,
         v: f32,
-        enter: JointExit,
+        enter: JointEnter,
     ) -> EnterJointResult {
         match *self {
             Joint::Continue {
@@ -201,8 +420,8 @@ impl Joint {
                 sustained_speed,
             } => {
                 let (entity, t) = match enter {
-                    JointExit::Start => (end, 0.0),
-                    JointExit::End => (start, 1.0),
+                    JointEnter::Start => (end, 0.0),
+                    JointEnter::End => (start, 1.0),
                 };
 
                 let new_v = v * sustained_speed;
@@ -219,8 +438,8 @@ impl Joint {
                 EnterJointResult {
                     next: Some(from),
                     t: match side {
-                        JointExit::Start => 1.0,
-                        JointExit::End => 0.0,
+                        JointEnter::Start => 1.0,
+                        JointEnter::End => 0.0,
                     },
                     v: 0.0,
                 }
@@ -372,7 +591,7 @@ impl CurveBuilder {
         // Spawn joints
 
         commands.entity(joint_entities[0])
-            .insert(Joint::new_stop(joint_entities[0], JointExit::End));
+            .insert(Joint::new_stop(joint_entities[0], JointEnter::End));
 
         for i in 1..(self.segments.len() - 1) {
             commands.entity(joint_entities[i])
@@ -385,7 +604,7 @@ impl CurveBuilder {
         }
 
         commands.entity(*joint_entities.last().unwrap())
-            .insert(Joint::new_stop(*joint_entities.last().unwrap(), JointExit::Start));
+            .insert(Joint::new_stop(*joint_entities.last().unwrap(), JointEnter::Start));
 
         // TODO: Spawn segments
         let mut segments = self.segments.into_iter();
@@ -453,6 +672,8 @@ pub mod builders {
         }
     }
     
+    /// Appends an arc with the given radius and number of revolutions (1 revolution = 1 full circle).
+    /// Panics if you put in a negative radius.
     pub fn arc(radius: f32, revolutions: f32) -> impl SectionBuilder {
         let curvature = revolutions.signum() / radius;
         let length = radius * revolutions.abs() * f32::TAU();

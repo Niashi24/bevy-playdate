@@ -1,14 +1,8 @@
-﻿use alloc::boxed::Box;
-use alloc::vec::Vec;
-use glam::Vec2;
-use num_traits::real::Real;
-use derive_more::From;
-use ode_solvers::{SVector, System};
-// use playdate::graphics::api::Api;
-// use playdate::graphics::Graphics;
-// use playdate::sys::ffi::LCDColor;
-use crate::arc::ArcSegment;
+﻿use crate::arc::ArcSegment;
 use crate::line::LineSegment;
+use derive_more::From;
+use glam::Vec2;
+use ode_solvers::{SVector, System};
 
 pub trait CurveSegment: Send + Sync + 'static {
     fn length(&self) -> f32;
@@ -16,6 +10,8 @@ pub trait CurveSegment: Send + Sync + 'static {
     fn position(&self, t: f32) -> Vec2;
     
     fn velocity(&self, t: f32) -> Vec2;
+    
+    fn curvature(&self) -> f32;
 
     // fn draw<A: Api>(&self, gfx: Graphics<A>, line_width: i32, c: LCDColor);
     
@@ -72,6 +68,13 @@ impl CurveSegment for CurveType {
         match self {
             CurveType::Line(l) => l.velocity(t),
             CurveType::Arc(a) => a.velocity(t),
+        }
+    }
+
+    fn curvature(&self) -> f32 {
+        match self {
+            CurveType::Line(l) => l.curvature(),
+            CurveType::Arc(a) => a.curvature(),
         }
     }
 

@@ -49,6 +49,10 @@ impl CurveSegment for ArcSegment {
         Vec2::new(-sin, -cos) * self.radius * (self.end - self.start).signum()
     }
 
+    fn curvature(&self) -> f32 {
+        1.0 / self.radius
+    }
+
     // fn draw<A: Api>(&self, gfx: Graphics<A>, line_width: i32, c: LCDColor) {
     //     gfx.draw_ellipse(
     //         self.center.x as i32,
