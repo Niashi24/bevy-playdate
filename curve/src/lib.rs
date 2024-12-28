@@ -3,6 +3,7 @@
 pub mod line;
 pub mod traits;
 pub mod arc;
+pub mod roots;
 
 extern crate alloc;
 
