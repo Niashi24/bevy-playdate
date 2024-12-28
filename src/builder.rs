@@ -9,8 +9,9 @@ use core::ops::Range;
 use arrayvec::ArrayVec;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
-use bevy_ecs::prelude::{Commands, Query};
-use bevy_math::Dir2;
+use bevy_ecs::prelude::{Bundle, Commands, Query};
+use bevy_ecs::query::{QueryData, QueryFilter};
+use bevy_math::{Dir2, Rot2};
 use glam::{FloatExt, Vec2};
 use pd::graphics::api::Api;
 use pd::graphics::bitmap::{Bitmap, Color, LCDColorConst};
@@ -23,7 +24,7 @@ use curve::arc::ArcSegment;
 use curve::line::LineSegment;
 use curve::traits::{CurveSegment, CurveType};
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct MovingSplineDot {
     pub t: f32,
     pub v: f32,
@@ -142,6 +143,14 @@ impl Segment {
 
         spr
     }
+    
+    pub fn to_bundle(self, line_width: i32) -> impl Bundle {
+        let sprite = self.to_sprite(Graphics::Cached(), line_width, LCDColor::BLACK);
+        (
+            self,
+            sprite,
+        )
+    }
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
@@ -170,7 +179,6 @@ pub struct Joint2 {
 
 impl Joint2 {
     pub fn new(connections: Vec<JointConnection>) -> Self {
-        // let space = JointSpace::new(&connections, query);
         
         Joint2 {
             connections,
@@ -178,49 +186,134 @@ impl Joint2 {
         }
     }
     
-    /// Rules with examples:
+    /// Picks the exit that most closely matches with the gravity direction.
+    /// Prioritizes exits that are in the same direction or directly perpendicular
+    /// (angle between <= 90deg)
     pub fn enter(
         &self,
-        v: &mut f32,
-        gravity_dir: Dir2,
+        v: f32,
+        mut gravity_dir: Dir2,
         enter_segment_entity: Entity,
         t_enter: f32,
-        q_segment: Query<&Segment>,
-    ) {
-        let enter_segment = q_segment.get(enter_segment_entity).unwrap();
-        let enter_vel = enter_segment.curve.velocity(t_enter).normalize_or_zero() * *v;
-        // let target_vel = enter_vel + gravity;
-        // let target_angle = target_vel.to_angle();
-        // 
-        // let mut exit = None;
-        // for connection in self.connections.iter() {
-        //     if connection.id == enter_segment_entity {
-        //         continue;
-        //     }
-        // 
-        //     let segment = q_segment.get(connection.id).unwrap();
-        //     let exit_dir = segment.curve.velocity(connection.t).normalize_or_zero();
-        //     match exit.as_mut() {
-        //         None => exit = Some((segment, exit_dir)),
-        //         Some((seg, dir)) => {
-        //             // let v_kept_old = dir.dot(enter_dir).max(0.0);
-        //             // let v_kept_new = exit_dir.dot(enter_dir).max(0.0);
-        //             // if v_kept_new
-        //         }
-        //     }
-        // }
+        q_segment: &Query<&Segment>,
+    ) -> EnterJointResult {
+        let gravity_dir = Vec2::new(gravity_dir.x, -gravity_dir.y);
 
+        if self.connections.len() < 2 {
+            return EnterJointResult {
+                next: enter_segment_entity,
+                t: t_enter,
+                v: 0.0,
+            };
+        }
+        
+        let enter_segment = q_segment.get(enter_segment_entity).unwrap();
+        let enter_vel = enter_segment.curve.dir(t_enter) * v.signum();
+        
+        let mut best_in_front = None;
+        let mut best_any = None;
+        
+        for connection in self.connections.iter() {
+            // ignore exits from those in the same direction
+            if connection.segments.iter()
+                .any(|i| i.id == enter_segment_entity && i.t == t_enter) {
+                continue;
+            }
+            let segment = q_segment.get(connection.segments[0].id).unwrap();
+            let dir = segment.curve.dir(connection.segments[0].t);
+            let target_dot = gravity_dir.dot(dir.into());
+            // if new direction in same direction
+            // => angle between <= 90 degrees
+            // => dot product >= 0 (then add floating point precision)
+            if enter_vel.dot(dir.into()) > -1e5 {
+                if let Some((dot, cxn)) = best_in_front.as_mut() {
+                    if target_dot > *dot {
+                        *dot = target_dot;
+                        *cxn = connection;
+                    }
+                } else {
+                    best_in_front = Some((target_dot, connection));
+                }
+            }
+
+            if let Some((dot, cxn)) = best_any.as_mut() {
+                if target_dot > *dot {
+                    *dot = target_dot;
+                    *cxn = connection;
+                }
+            } else {
+                best_any = Some((target_dot, connection));
+            }
+        }
+        
+        let (_, next) = best_in_front
+            .or(best_any)
+            // safe because length > 1
+            .unwrap();
+        
+        let next_dir = q_segment.get(next.segments[0].id).unwrap()
+            .curve.dir(next.segments[0].t);
+        
+        let normalized = Rot2::from_sin_cos(next_dir.y, next_dir.x).inverse() * gravity_dir;
+        let next_id = next.eval(Dir2::new_unchecked(normalized));
+        
+        // Our joint's directions are all in the same direction,
+        // but might be flipped, so let's use the real one
+        let next_dir = q_segment.get(next_id.id).unwrap()
+            .curve.dir(next_id.t);
+        let dot = next_dir.dot(enter_vel);
+        
+        EnterJointResult {
+            next: next_id.id,
+            t: next_id.t,
+            v: v.abs() * dot,
+        }
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
-pub struct JointConnection {
+pub struct SegmentConnection {
+    /// The entity for this segment.
     pub id: Entity,
-    /// The t-value on the curve this joint exits onto.
-    /// 
-    /// If we were to evaluate the curve in `id` at this
-    /// t-value, the joint would be at that position
+    /// The t-value on the segment the joint exits onto.
+    ///
+    /// If we were to evaluate the segment in `id` at this
+    /// `t`-value, the joint would be at that position
     pub t: f32,
+}
+
+#[derive(Clone, PartialEq, Debug)]
+/// Contains all the segments pointing in the same direction,
+/// sorted by curvature
+pub struct JointConnection {
+    pub segments: SmallVec<[SegmentConnection; 1]>,
+}
+
+impl JointConnection {
+    /// angle should be from 0 (either negative or positive)
+    pub fn eval(&self, dir: Dir2) -> &SegmentConnection {
+        const MIN_ANGLE: f32 = 0.174533;  // 10 degrees
+        
+        let len = self.segments.len() as i32;
+        
+        if len == 1 {
+            &self.segments[0]
+        } else {
+            // avoid doing somewhat expensive atan2 call
+            // unless necessary
+            let angle = dir.to_angle();
+            
+            for i in 0..len - 1 {
+                let end = 2 * (i + 1) - len;
+                let end = (end as f32) * MIN_ANGLE;
+                
+                if angle < end {
+                    return &self.segments[i as usize];
+                }
+            }
+            self.segments.last().unwrap()
+        }
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -246,116 +339,6 @@ fn lerp_angle(a: f32, b: f32, t: f32) -> f32 {
     let diff = (b - a) % TAU;
     let distance = ((2.0 * diff) % TAU) - diff;
     a + distance * t
-}
-
-impl JointSpace {
-    pub fn new(
-        connections: &[JointConnection],
-        segment: Query<&Segment>,
-    ) -> Self {
-        let mut angle_curvature = segment.iter_many(connections.iter().map(|x| x.id))
-            .zip(connections.iter().enumerate())
-            .map(|(segment, (i, connection))| {
-                let angle = segment.curve.velocity(connection.t).to_angle();
-                let curvature = segment.curve.curvature();
-                (angle, curvature, i)
-            })
-            .collect::<Vec<_>>();
-        
-        angle_curvature.sort_by(|a, b| a.0.total_cmp(&b.0)
-            .then(a.1.total_cmp(&b.1)));
-
-        let mut result: Vec<(f32, SmallVec<[usize; 1]>)> = Vec::new();
-
-        for (key, _, idx) in angle_curvature {
-            // If `key` matches the last group's key, add `value` to the group's SmallVec.
-            if let Some((last_key, indices)) = result.last_mut() {
-                if *last_key == key {
-                    indices.push(idx);
-                    continue;
-                }
-            }
-
-            // Otherwise, create a new group.
-            result.push((key, smallvec![idx]));
-        }
-        
-        let mut ranges_unsplit = Vec::new();
-        
-        for (i, (angle, indices)) in result.iter().enumerate() {
-            let before = if i == 0 {
-                result.last().unwrap().0
-            } else {
-                result[i - 1].0
-            };
-            
-            let after = if i == result.len() - 1 {
-                result.first().unwrap().0
-            } else {
-                result[i + 1].0
-            };
-            
-            let angle = *angle;
-            let start = lerp_angle(before, angle, 0.5);
-            let end = lerp_angle(angle, after, 0.5);
-            
-            const MIN_ANGLE: f32 = 0.174533;  // 10 degrees
-            
-            if indices.len() == 1 {
-                ranges_unsplit.push((start..end, indices[0]));
-            } else {
-                let mut previous_end = start;
-                for i in 0..indices.len() - 1 {
-                    let end = 2 * (i as i32 + 1) - indices.len() as i32;
-                    let end = angle + (end as f32) * MIN_ANGLE;
-
-                    ranges_unsplit.push((previous_end..end, indices[i]));
-
-                    previous_end = end;
-                }
-                ranges_unsplit.push((previous_end..end, *indices.last().unwrap()));
-            }
-        }
-        
-        let ranges = ranges_unsplit.into_iter()
-            .flat_map(|(mut r, i)| {
-                assert_eq!(r.start.total_cmp(&r.end), Ordering::Less);
-                
-                while r.start < 0.0 {
-                    r.start += TAU;
-                    r.end += TAU;
-                }
-                
-                if r.end > TAU {
-                    let split = 0.0..(r.end - TAU);
-                    r.end = TAU;
-                    ArrayVec::from([(r, i), (split, i)])
-                } else {
-                    ArrayVec::from_iter([(r, i)])
-                }
-            })
-            .collect();
-        
-        dbg!(Self {
-            ranges,
-        })
-    }
-    
-    pub fn eval(&self, mut angle: f32) -> usize {
-        angle = angle.rem_euclid(&TAU);
-        
-        let idx = self.ranges.binary_search_by(|(range, _)| {
-            if angle < range.start {
-                Ordering::Greater
-            } else if angle >= range.end {
-                Ordering::Less
-            } else {
-                Ordering::Equal
-            }
-        }).unwrap();
-        
-        self.ranges[idx].1
-    }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug, Component)]
@@ -393,9 +376,9 @@ impl Joint {
         start_seg: &CurveType, start_entity: Entity,
         end_seg: &CurveType, end_entity: Entity,
     ) -> Self {
-        let v_s = start_seg.velocity(1.0).normalize_or_zero();
-        let v_e = end_seg.velocity(0.0).normalize_or_zero();
-        let mut sustained_speed = f32::max(0.0, v_s.dot(v_e));
+        let v_s = start_seg.dir(1.0);
+        let v_e = end_seg.dir(0.0);
+        let mut sustained_speed = f32::max(0.0, v_s.dot(v_e.into()));
         // for floating point precision i guess
         if sustained_speed > 0.995 {
             sustained_speed = 1.0;
@@ -427,7 +410,7 @@ impl Joint {
                 let new_v = v * sustained_speed;
 
                 EnterJointResult {
-                    next: Some(entity),
+                    next: entity,
                     t,
                     v: new_v,
                 }
@@ -436,7 +419,7 @@ impl Joint {
                 assert_eq!(side, enter);
 
                 EnterJointResult {
-                    next: Some(from),
+                    next: from,
                     t: match side {
                         JointEnter::Start => 1.0,
                         JointEnter::End => 0.0,
@@ -452,10 +435,11 @@ impl Joint {
 // enum JointType {
 // }
 
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub struct EnterJointResult {
-    next: Option<Entity>,
-    t: f32,
-    v: f32,
+    pub next: Entity,
+    pub t: f32,
+    pub v: f32,
 }
 // 
 // enum EnterJointResult {
@@ -509,9 +493,9 @@ impl CurveBuilder {
 
         println!("start: {:.2?} w/ {:.2?}, end: {:.2?} w/ {:.2?}",
                  segment.position(0.0),
-                 segment.velocity(0.0).normalize_or_zero(),
+                 segment.dir(0.0),
                  segment.position(1.0),
-                 segment.velocity(1.0).normalize_or_zero()
+                 segment.dir(1.0)
         );
         
         let len = segment.length();
@@ -550,7 +534,7 @@ impl CurveBuilder {
             let arc = ArcSegment::from_pos_dir_curvature_length(self.cur_pos, self.cur_dir, curvature, length);
 
             self.cur_pos = arc.position(1.0);
-            self.cur_dir = arc.velocity(1.0).normalize_or_zero();
+            self.cur_dir = arc.dir(1.0).normalize_or_zero();
 
             arc.into()
         };
@@ -559,9 +543,9 @@ impl CurveBuilder {
 
         println!("start: {:.2?} w/ {:.2?}, end: {:.2?} w/ {:.2?}",
                  segment.position(0.0),
-                 segment.velocity(0.0).normalize_or_zero(),
+                 segment.dir(0.0).normalize_or_zero(),
                  segment.position(1.0),
-                 segment.velocity(1.0).normalize_or_zero()
+                 segment.dir(1.0).normalize_or_zero()
         );
 
         self.segments.push(SplineSegment {
@@ -617,14 +601,9 @@ impl CurveBuilder {
                 end_joint: joint_entities[i + 1],
             };
 
-            let spr = segment.to_sprite(Graphics::Cached(), line_width, LCDColor::BLACK);
-
             // let bitmap = ;
             commands.entity(seg_entities[i])
-                .insert((
-                    spr,
-                    segment,
-                ));
+                .insert(segment.to_bundle(line_width));
         }
     }
 }
@@ -666,7 +645,7 @@ pub mod builders {
             let arc = ArcSegment::from_pos_dir_curvature_length(*pos, *dir, curvature, length);
 
             *pos = arc.position(1.0);
-            *dir = arc.velocity(1.0).normalize_or_zero();
+            *dir = arc.dir(1.0).normalize_or_zero();
 
             arc.into()
         }

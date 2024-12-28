@@ -1,20 +1,25 @@
-﻿use crate::arc::ArcSegment;
+﻿use bevy_math::Dir2;
+use crate::arc::ArcSegment;
 use crate::line::LineSegment;
 use derive_more::From;
 use glam::Vec2;
 use ode_solvers::{SVector, System};
 
 pub trait CurveSegment: Send + Sync + 'static {
+    /// Length of this curve segment.
     fn length(&self) -> f32;
     
+    /// Position at the given `t`-value along the curve segment.
+    /// `t` = 0 is the start, `t` = 1 is the end.
     fn position(&self, t: f32) -> Vec2;
     
-    fn velocity(&self, t: f32) -> Vec2;
+    /// Direction of the curve at the given `t` value along the curve segment.
+    fn dir(&self, t: f32) -> Dir2;
     
+    /// Curvature of the curve segment (constant along the curve)
     fn curvature(&self) -> f32;
-
-    // fn draw<A: Api>(&self, gfx: Graphics<A>, line_width: i32, c: LCDColor);
     
+    /// Bounds of the curve segment
     fn bounds(&self) -> (Vec2, Vec2);
 }
 
@@ -31,7 +36,7 @@ pub struct CurveSegmentSystem<'a, Curve: CurveSegment> {
 impl<Curve: CurveSegment> System<f32, SVector<f32, 2>> for CurveSegmentSystem<'_, Curve> {
     fn system(&self, _x: f32, y: &SVector<f32, 2>, dy: &mut SVector<f32, 2>) {
         let [[t, v]] = y.data.0;
-        let deriv = self.curve.velocity(t);
+        let deriv = self.curve.dir(t);
 
         dy[0] = v / self.curve.length();
         dy[1] = self.gravity.dot(deriv.normalize_or_zero());
@@ -64,10 +69,10 @@ impl CurveSegment for CurveType {
         }
     }
 
-    fn velocity(&self, t: f32) -> Vec2 {
+    fn dir(&self, t: f32) -> Dir2 {
         match self {
-            CurveType::Line(l) => l.velocity(t),
-            CurveType::Arc(a) => a.velocity(t),
+            CurveType::Line(l) => l.dir(t),
+            CurveType::Arc(a) => a.dir(t),
         }
     }
 

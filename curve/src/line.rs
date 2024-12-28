@@ -1,4 +1,5 @@
-﻿use glam::Vec2;
+﻿use bevy_math::Dir2;
+use glam::Vec2;
 // use playdate::graphics::api::Api;
 // use playdate::graphics::Graphics;
 // use playdate::sys::ffi::{LCDColor, PDRect};
@@ -19,8 +20,8 @@ impl CurveSegment for LineSegment {
         Vec2::lerp(self.start, self.end, t)
     }
 
-    fn velocity(&self, _t: f32) -> Vec2 {
-        self.end - self.start
+    fn dir(&self, _t: f32) -> Dir2 {
+        Dir2::new(self.end - self.start).unwrap()
     }
 
     fn curvature(&self) -> f32 {

@@ -1,4 +1,5 @@
-﻿use glam::{FloatExt, Vec2};
+﻿use bevy_math::Dir2;
+use glam::{FloatExt, Vec2};
 // use playdate::graphics::api::Api;
 // use playdate::graphics::Graphics;
 // use playdate::sys::ffi::{LCDColor, PDRect};
@@ -43,14 +44,15 @@ impl CurveSegment for ArcSegment {
         Vec2::new(cos, -sin) * self.radius + self.center
     }
 
-    fn velocity(&self, t: f32) -> Vec2 {
+    fn dir(&self, t: f32) -> Dir2 {
         let angle = f32::lerp(self.start, self.end, t);
+        let dir = (self.end - self.start).signum();
         let (sin, cos) = f32::sin_cos(angle);
-        Vec2::new(-sin, -cos) * self.radius * (self.end - self.start).signum()
+        Dir2::from_xy_unchecked(-sin * dir, -cos * dir)
     }
 
     fn curvature(&self) -> f32 {
-        1.0 / self.radius
+        1.0 / self.radius * (self.start - self.end).signum()
     }
 
     // fn draw<A: Api>(&self, gfx: Graphics<A>, line_width: i32, c: LCDColor) {
