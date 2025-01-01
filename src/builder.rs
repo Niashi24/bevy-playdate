@@ -1,4 +1,5 @@
 ﻿use alloc::rc::Rc;
+use alloc::vec;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::f32::consts::TAU;
@@ -341,96 +342,6 @@ fn lerp_angle(a: f32, b: f32, t: f32) -> f32 {
     a + distance * t
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, Component)]
-pub enum Joint {
-    /// Continues to next segment
-    Continue {
-        /// t = 0
-        start: Entity,
-        /// t = 1
-        end: Entity,
-        /// fraction of speed kept when transitioning
-        sustained_speed: f32,
-    },
-    /// Stops at this segment, velocity canceled
-    Stop {
-        from: Entity,
-        side: JointEnter,
-    },
-    // /// Falls off the edge
-    // Fall {
-    //     from: Entity,
-    //     side: JointExit,
-    // },
-}
-
-impl Joint {
-    pub fn new_stop(start: Entity, side: JointEnter) -> Self {
-        Self::Stop {
-            from: start,
-            side,
-        }
-    }
-
-    pub fn new_continue(
-        start_seg: &CurveType, start_entity: Entity,
-        end_seg: &CurveType, end_entity: Entity,
-    ) -> Self {
-        let v_s = start_seg.dir(1.0);
-        let v_e = end_seg.dir(0.0);
-        let mut sustained_speed = f32::max(0.0, v_s.dot(v_e.into()));
-        // for floating point precision i guess
-        if sustained_speed > 0.995 {
-            sustained_speed = 1.0;
-        }
-
-        Self::Continue {
-            start: start_entity,
-            end: end_entity,
-            sustained_speed,
-        }
-    }
-
-    pub fn enter_joint(
-        &self,
-        v: f32,
-        enter: JointEnter,
-    ) -> EnterJointResult {
-        match *self {
-            Joint::Continue {
-                start,
-                end,
-                sustained_speed,
-            } => {
-                let (entity, t) = match enter {
-                    JointEnter::Start => (end, 0.0),
-                    JointEnter::End => (start, 1.0),
-                };
-
-                let new_v = v * sustained_speed;
-
-                EnterJointResult {
-                    next: entity,
-                    t,
-                    v: new_v,
-                }
-            }
-            Joint::Stop { from, side } => {
-                assert_eq!(side, enter);
-
-                EnterJointResult {
-                    next: from,
-                    t: match side {
-                        JointEnter::Start => 1.0,
-                        JointEnter::End => 0.0,
-                    },
-                    v: 0.0,
-                }
-            }
-        }
-    }
-}
-
 // #[derive(Copy, Clone, PartialEq, Debug)]
 // enum JointType {
 // }
@@ -575,22 +486,58 @@ impl CurveBuilder {
         // Spawn joints
 
         commands.entity(joint_entities[0])
-            .insert(Joint::new_stop(joint_entities[0], JointEnter::End));
+            .insert(Joint2 {
+                connections: vec![
+                    JointConnection {
+                        segments: smallvec![
+                            SegmentConnection {
+                                id: seg_entities[0],
+                                t: 0.0,
+                            }
+                        ],
+                    }
+                ],
+            });
 
         for i in 1..(self.segments.len() - 1) {
             commands.entity(joint_entities[i])
-                .insert(Joint::new_continue(
-                    &self.segments[i].segment,
-                    seg_entities[i],
-                    &self.segments[i + 1].segment,
-                    seg_entities[i + 1],
-                ));
+                .insert(Joint2 {
+                    connections: vec![
+                        JointConnection {
+                            segments: smallvec![
+                                SegmentConnection {
+                                    id: seg_entities[i],
+                                    t: 1.0,
+                                }
+                            ],
+                        },
+                        JointConnection {
+                            segments: smallvec![
+                                SegmentConnection {
+                                    id: seg_entities[i+1],
+                                    t: 0.0,
+                                }
+                            ],
+                        },
+                    ],
+                });
         }
 
         commands.entity(*joint_entities.last().unwrap())
-            .insert(Joint::new_stop(*joint_entities.last().unwrap(), JointEnter::Start));
+            .insert(Joint2 {
+                connections: vec![
+                    JointConnection {
+                        segments: smallvec![
+                            SegmentConnection {
+                                id: *joint_entities.last().unwrap(),
+                                t: 1.0,
+                            },
+                        ],
+                    }
+                ],
+            });
 
-        // TODO: Spawn segments
+        // Spawn segments
         let mut segments = self.segments.into_iter();
 
         for i in 0..seg_entities.len() {
@@ -605,6 +552,8 @@ impl CurveBuilder {
             commands.entity(seg_entities[i])
                 .insert(segment.to_bundle(line_width));
         }
+        
+        
     }
 }
 

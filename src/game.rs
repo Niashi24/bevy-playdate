@@ -1,21 +1,20 @@
-﻿use alloc::vec;
-use alloc::vec::Vec;
-use core::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
-use crate::builder::builders::{arc, line};
+﻿use crate::builder::builders::{arc, line};
 use crate::builder::{CurveBuilder, Joint2, JointConnection, MovingSplineDot, Segment, SegmentConnection};
-use crate::curve::{BCurve, BCurveFallSystem};
+use alloc::vec;
+use alloc::vec::Vec;
 use bevy_app::{App, Update};
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ScheduleLabel;
-use bevy_ecs::system::RunSystemOnce;
 use bevy_math::Dir2;
 use bevy_playdate::input::{CrankInput, InputPlugin};
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::{Time, TimePlugin};
+use core::f32::consts::{FRAC_PI_2, PI, TAU};
+use curve::arc::ArcSegment;
+use curve::line::LineSegment;
 use curve::traits::{CurveSegment, CurveType};
 use glam::Vec2;
 use num_traits::float::Float;
-use num_traits::Euclid;
 use pd::graphics::bitmap::LCDColorConst;
 use pd::graphics::color::Color;
 use pd::graphics::Graphics;
@@ -23,9 +22,6 @@ use pd::sys::ffi::LCDColor;
 use playdate::system::System as PDSystem;
 use rand::SeedableRng;
 use smallvec::smallvec;
-use bevy_playdate::dbg;
-use curve::arc::ArcSegment;
-use curve::line::LineSegment;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, ScheduleLabel)]
 pub struct AppUpdate;
@@ -132,15 +128,15 @@ pub fn register_systems(app: &mut App) {
     //     .push(arc_curvature_length(200.0, -1.0 / 50.0))
     //     .build(&mut app.world_mut().commands(), 10);
 
-    // CurveBuilder::new(Vec2::new(168.0, 20.0), Vec2::X)
-    //     .push(line(100.0))
-    //     .push(arc(50.0, -0.25))
-    //     .push(line(50.0))
-    //     .push(arc(25.0, -0.5))
-    //     .push(arc(25.0, 0.5))
-    //     .push(arc(100.0, -0.75))
-    //     .push(line(50.0))
-    //     .build(&mut app.world_mut().commands(), 4);
+    CurveBuilder::new(Vec2::new(168.0, 20.0), Vec2::X)
+        .push(line(100.0))
+        .push(arc(50.0, -0.25))
+        .push(line(50.0))
+        .push(arc(25.0, -0.5))
+        .push(arc(25.0, 0.5))
+        .push(arc(100.0, -0.75))
+        .push(line(50.0))
+        .build(&mut app.world_mut().commands(), 4);
     
     
     test_branch(&mut app.world_mut().commands());
@@ -609,7 +605,7 @@ fn move_spline_dot(
     crank: Res<CrankInput>,
     time: Res<Time>,
 ) {
-    let gravity = rotate(Vec2::NEG_Y, crank.angle.to_radians()) * 200.0;
+    let gravity = rotate(Vec2::NEG_Y, crank.angle.to_radians()) * 100.0;
     
     for (mut dot, mut sprite) in &mut dots {
         // dot.t = (dot.t + dot.v * 0.02) % 1.0;
@@ -617,8 +613,9 @@ fn move_spline_dot(
         
         let dir = segment.curve.dir(dot.t);
         // TODO: make frame-rate independent
-        dot.v += gravity.dot(dir.into()) * time.delta_seconds();
+        dot.v += 0.5 * gravity.dot(dir.into()) * time.delta_seconds();
         dot.t += dot.v * time.delta_seconds() / segment.curve.length();
+        dot.v += 0.5 * gravity.dot(dir.into()) * time.delta_seconds();
         
         if dot.t > 1.0 || dot.t < 0.0 {
             let (j, t) = if dot.t > 1.0 {
