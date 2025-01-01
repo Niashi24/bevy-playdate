@@ -469,9 +469,15 @@ impl CurveBuilder {
         self
     }
 
-    pub fn build(self, commands: &mut Commands, line_width: i32) {
+    pub fn build(
+        self,
+         commands: &mut Commands,
+         line_width: i32,
+         join_ends: bool,
+    ) -> (Vec<Entity>, Vec<Entity>)
+    {
         if self.segments.is_empty() {
-            return;
+            return Default::default();
         }
         // TODO when bevy_hierarchy ports, make children
         let parent = commands.spawn_empty().id();
@@ -479,25 +485,11 @@ impl CurveBuilder {
         let seg_entities: Vec<Entity> = (0..self.segments.len())
             .map(|_| commands.spawn_empty().id())
             .collect();
-        let joint_entities: Vec<Entity> = (0..self.segments.len() + 1)
+        let joint_entities: Vec<Entity> = (0..self.segments.len() + if join_ends { 0 } else { 1 })
             .map(|_| commands.spawn_empty().id())
             .collect();
 
         // Spawn joints
-
-        commands.entity(joint_entities[0])
-            .insert(Joint2 {
-                connections: vec![
-                    JointConnection {
-                        segments: smallvec![
-                            SegmentConnection {
-                                id: seg_entities[0],
-                                t: 0.0,
-                            }
-                        ],
-                    }
-                ],
-            });
 
         for i in 1..(self.segments.len() - 1) {
             commands.entity(joint_entities[i])
@@ -523,19 +515,57 @@ impl CurveBuilder {
                 });
         }
 
-        commands.entity(*joint_entities.last().unwrap())
-            .insert(Joint2 {
-                connections: vec![
-                    JointConnection {
-                        segments: smallvec![
+        if join_ends {
+            commands.entity(joint_entities[0])
+                .insert(Joint2 {
+                    connections: vec![
+                        JointConnection {
+                            segments: smallvec![
+                                SegmentConnection {
+                                    id: seg_entities[0],
+                                    t: 0.0,
+                                },
+                            ],
+                        },
+                        JointConnection {
+                            segments: smallvec![
+                                SegmentConnection {
+                                    id: *seg_entities.last().unwrap(),
+                                    t: 1.0,
+                                },
+                            ],
+                        },
+                    ],
+                });
+        } else {
+            commands.entity(joint_entities[0])
+                .insert(Joint2 {
+                    connections: vec![
+                        JointConnection {
+                            segments: smallvec![
+                            SegmentConnection {
+                                id: seg_entities[0],
+                                t: 0.0,
+                            }
+                        ],
+                        }
+                    ],
+                });
+
+            commands.entity(*joint_entities.last().unwrap())
+                .insert(Joint2 {
+                    connections: vec![
+                        JointConnection {
+                            segments: smallvec![
                             SegmentConnection {
                                 id: *joint_entities.last().unwrap(),
                                 t: 1.0,
                             },
                         ],
-                    }
-                ],
-            });
+                        }
+                    ],
+                });
+        }
 
         // Spawn segments
         let mut segments = self.segments.into_iter();
@@ -545,15 +575,14 @@ impl CurveBuilder {
                 curve: segments.next().unwrap().segment,
                 parent,
                 start_joint: joint_entities[i],
-                end_joint: joint_entities[i + 1],
+                end_joint: joint_entities[(i + 1) % joint_entities.len()],
             };
 
-            // let bitmap = ;
             commands.entity(seg_entities[i])
                 .insert(segment.to_bundle(line_width));
         }
-        
-        
+
+        (seg_entities, joint_entities)
     }
 }
 
@@ -601,6 +630,7 @@ pub mod builders {
     }
     
     /// Appends an arc with the given radius and number of revolutions (1 revolution = 1 full circle).
+    /// Use positive revolutions to go counterclockwise, negative for clockwise.
     /// Panics if you put in a negative radius.
     pub fn arc(radius: f32, revolutions: f32) -> impl SectionBuilder {
         let curvature = revolutions.signum() / radius;

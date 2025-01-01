@@ -23,6 +23,16 @@ pub enum SolutionIter<T> {
     Two([T; 2]),
 }
 
+impl<T> From<Option<Solution<T>>> for SolutionIter<T> {
+    fn from(value: Option<Solution<T>>) -> Self {
+        match value {
+            None => SolutionIter::Exhausted,
+            Some(Solution::One(a)) => SolutionIter::One(a),
+            Some(Solution::Two(a)) => SolutionIter::Two(a),
+        }
+    }
+}
+
 impl<T> Iterator for SolutionIter<T> {
     type Item = T;
 
@@ -53,7 +63,7 @@ pub fn linear(a: f32, b: f32) -> Option<f32> {
 /// Solve ax^2 + bx + c = 0
 pub fn quadratic(a: f32, b: f32, c: f32) -> Option<Solution<f32>> {
     if a == 0.0 {
-        return Some(Solution::One(linear(b, c)?));
+        return linear(b, c).map(Solution::One);
     }
     
     let discriminant = b * b - 4.0 * a * c;

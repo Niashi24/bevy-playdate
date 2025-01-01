@@ -128,7 +128,7 @@ pub fn register_systems(app: &mut App) {
     //     .push(arc_curvature_length(200.0, -1.0 / 50.0))
     //     .build(&mut app.world_mut().commands(), 10);
 
-    CurveBuilder::new(Vec2::new(168.0, 20.0), Vec2::X)
+    let (segments, joints) = CurveBuilder::new(Vec2::new(168.0, 20.0), Vec2::X)
         .push(line(100.0))
         .push(arc(50.0, -0.25))
         .push(line(50.0))
@@ -136,7 +136,26 @@ pub fn register_systems(app: &mut App) {
         .push(arc(25.0, 0.5))
         .push(arc(100.0, -0.75))
         .push(line(50.0))
-        .build(&mut app.world_mut().commands(), 4);
+        .build(&mut app.world_mut().commands(), 4, true);
+
+
+
+    let mut sprite = Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
+        gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
+    });
+    
+    app.world_mut().commands().spawn_batch(
+        (0..3).into_iter()
+            .map(move |i| (
+                sprite.clone(),
+                MovingSplineDot {
+                    t: i as f32 * 0.1,
+                    v: 0.5,
+                    spline_entity: segments[i],
+                },
+            )
+            )
+    );
     
     
     test_branch(&mut app.world_mut().commands());
