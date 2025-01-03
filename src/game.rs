@@ -1,8 +1,9 @@
 ﻿use crate::builder::builders::{arc, line};
 use crate::builder::{CurveBuilder, Joint2, JointConnection, MovingSplineDot, Segment, SegmentConnection};
-use alloc::vec;
+use alloc::{format, vec};
 use alloc::vec::Vec;
-use bevy_app::{App, Update};
+use core::cmp::Ordering;
+use bevy_app::{App, PostUpdate, Update};
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ScheduleLabel;
 use bevy_math::Dir2;
@@ -14,14 +15,18 @@ use curve::arc::ArcSegment;
 use curve::line::LineSegment;
 use curve::traits::{CurveSegment, CurveType};
 use glam::Vec2;
-use num_traits::float::Float;
+use num_traits::float::{Float, TotalOrder};
 use pd::graphics::bitmap::LCDColorConst;
 use pd::graphics::color::Color;
 use pd::graphics::Graphics;
+use pd::graphics::text::draw_text;
 use pd::sys::ffi::LCDColor;
 use playdate::system::System as PDSystem;
 use rand::SeedableRng;
 use smallvec::smallvec;
+use bevy_playdate::dbg;
+use curve::roots::{quadratic, SolutionIter};
+use crate::draw_sprites_system;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, ScheduleLabel)]
 pub struct AppUpdate;
@@ -37,6 +42,10 @@ pub fn register_systems(app: &mut App) {
     app.add_systems(Update, (
         move_spline_dot
     ).chain());
+    
+    app.add_systems(PostUpdate,
+        debug_dots.after(draw_sprites_system)
+    );
     
     let t = PDSystem::Default().seconds_since_epoch();
     let mut r = rand_pcg::Pcg32::seed_from_u64(t as u64);
@@ -137,15 +146,15 @@ pub fn register_systems(app: &mut App) {
         .push(arc(100.0, -0.75))
         .push(line(50.0))
         .build(&mut app.world_mut().commands(), 4, true);
-
-
-
+    
+    
+    
     let mut sprite = Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
         gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
     });
     
     app.world_mut().commands().spawn_batch(
-        (0..3).into_iter()
+        (0..1).into_iter()
             .map(move |i| (
                 sprite.clone(),
                 MovingSplineDot {
@@ -158,9 +167,9 @@ pub fn register_systems(app: &mut App) {
     );
     
     
-    test_branch(&mut app.world_mut().commands());
+    // test_branch(&mut app.world_mut().commands());
     // test_3_way_curve(&mut app.world_mut().commands());
-    test_circle(&mut app.world_mut().commands());
+    // test_circle(&mut app.world_mut().commands());
     
     // let test = Joint2::new
     
@@ -555,7 +564,7 @@ fn test_circle(commands: &mut Commands) {
     let circle_segment = commands.spawn_empty().id();
     let joint = commands.spawn_empty().id();
     
-    let center = Vec2::new(275.0, 100.0);
+    let center = Vec2::new(200.0, 100.0);
     let radius = 75.0;
     
     commands.entity(circle_segment)
@@ -569,7 +578,8 @@ fn test_circle(commands: &mut Commands) {
             parent: Entity::PLACEHOLDER,
             start_joint: joint,
             end_joint: joint,
-        }.to_bundle(4));
+        }.to_bundle(4))
+        .insert(Name::new("Circle"));
     
     commands.entity(joint)
         .insert(Joint2 {
@@ -591,7 +601,8 @@ fn test_circle(commands: &mut Commands) {
                     ],
                 },
             ],
-        });
+        })
+        .insert(Name::new("Joint"));
 
     let mut sprite = Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
         gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
@@ -628,39 +639,137 @@ fn move_spline_dot(
     
     for (mut dot, mut sprite) in &mut dots {
         // dot.t = (dot.t + dot.v * 0.02) % 1.0;
-        let segment = q_segments.get(dot.spline_entity).unwrap();
-        
-        let dir = segment.curve.dir(dot.t);
-        // TODO: make frame-rate independent
-        dot.v += 0.5 * gravity.dot(dir.into()) * time.delta_seconds();
-        dot.t += dot.v * time.delta_seconds() / segment.curve.length();
-        dot.v += 0.5 * gravity.dot(dir.into()) * time.delta_seconds();
-        
-        if dot.t > 1.0 || dot.t < 0.0 {
-            let (j, t) = if dot.t > 1.0 {
-                (segment.end_joint, 1.0)
-            } else {
-                (segment.start_joint, 0.0)
-            };
-            
-            let joint = q_joints.get(j).unwrap();
-            let result = joint.enter(
-                dot.v,
-                Dir2::new(gravity).unwrap(),
-                dot.spline_entity,
-                t,
-                &q_segments,
-            );
-
-            dot.t = result.t;
-            dot.v = result.v;
-            dot.spline_entity = result.next;
-        }
+        // println!("handling next");
+        move_dot_recursive(dot.as_mut(), time.delta_seconds(), 0, gravity, &q_segments, &q_joints);
+        dot.v *= 0.999;
         
         let new_pos = q_segments.get(dot.spline_entity).unwrap()
             .curve.position(dot.t);
         
         sprite.move_to(new_pos.x, new_pos.y);
+    }
+}
+
+fn move_dot_recursive(
+    dot: &mut MovingSplineDot,
+    t_remaining: f32,
+    depth: usize,
+    gravity: Vec2,
+    q_segments: &Query<&Segment>,
+    q_joints: &Query<&Joint2>,
+) {
+    if depth > 10 {
+        println!("spent too long: remaining time: {}", t_remaining);
+        return;
+    }
+    if t_remaining < 1e-6 {
+        return;
+    }
+    // println!("here0");
+    
+    let segment = q_segments.get(dot.spline_entity).unwrap();
+    let length = segment.curve.length();
+
+    let dir = segment.curve.dir(dot.t);
+    let g = gravity.dot(dir.into());
+    // println!("here.5");
+    if g == 0.0 && dot.v == 0.0 {
+        return;
+    }
+    // println!("here1");
+
+    let v = dot.v;
+    let t = dot.t;
+
+    let mut change_joints = |dot: &mut MovingSplineDot, new_joint: Entity, old_t: f32| {
+        let joint = q_joints.get(new_joint).unwrap();
+        let result = joint.enter(
+            dot.v,
+            Dir2::new(gravity).unwrap(),
+            dot.spline_entity,
+            old_t,
+            &q_segments,
+        );
+
+        dot.t = result.t;
+        dot.v = result.v;
+        dot.spline_entity = result.next;
+    };
+    
+    // this is really just for the case where joint is not connected (dot is clamped and stopped),
+    // then is reconnected, which might be a mechanic but otherwise probably won't happen
+    if (t == 1.0 && (v > 0.0 || (v == 0.0 && g > 0.0))) {
+        let old_dot = *dot;
+        change_joints(dot, segment.end_joint, t);
+        if *dot == old_dot {
+            return;
+        }
+        // println!("was on edge");
+
+        return move_dot_recursive(dot, t_remaining, depth + 1, gravity, q_segments, q_joints);
+    }
+    if (t == 0.0 && (v < 0.0 || (v == 0.0 && g < 0.0))) {
+        let old_dot = *dot;
+        change_joints(dot, segment.start_joint, t);
+        if *dot == old_dot {
+            return;
+        }
+        // println!("was on edge: {} -> {}", old_dot.t, dot.t);
+
+        return move_dot_recursive(dot, t_remaining, depth + 1, gravity, q_segments, q_joints);
+    }
+
+    // println!("here2");
+
+    // solve t = 1
+    // => 1/2 * g * t^2 + v * t + t_0 = 1
+    // => ... - 1 = 0
+    // where t > 0 and t < remaining
+    let end = SolutionIter::from(quadratic(0.5 * g / length, dot.v / length, dot.t - 1.0))
+        .filter(|&t| t > 0.0 && t <= t_remaining)
+        .map(|t| (t, 1.0f32, segment.end_joint))
+        .chain(SolutionIter::from(quadratic(0.5 * g / length, dot.v / length, dot.t))
+            .filter(|&t| t > 0.0 && t <= t_remaining)
+            .map(|t| (t, 0.0f32, segment.start_joint)))
+        .min_by(|a, b| a.0.total_cmp(&b.0))
+        .into_iter()
+        .next();
+    
+    // println!("here3");
+    
+    if let Some((time, t_old, joint)) = end {
+        // println!("hit joint: {}, {g}, {length}, {:?} -> {}", time, dot, t_old);
+        dot.v += g * time / length;
+        
+        let old_dot = *dot;
+        change_joints(dot, joint, t_old);
+        if *dot == old_dot {
+            // println!("same?: ({:?}) -> ({:?})", old_dot, dot);
+            return;
+        }
+
+        return move_dot_recursive(dot, t_remaining - time, depth + 1, gravity, q_segments, q_joints);
+    }
+    // println!("end with {} remaining: {:?}", t_remaining, dot);
+    
+    // let d_t = 0.5 * g * t_remaining.powi(2) / length.powi(2) + dot.v * t_remaining / length;
+
+    // now we know we will not run into the end, so we can do the regular attempt
+    // dot.t += dbg!(d_t);
+    // dot.v += 0.5 * g * t_remaining;
+    // dot.t += dot.v * t_remaining / length;
+    // dot.v += 0.5 * g * t_remaining;
+    
+    dot.t += (0.5 * g * t_remaining.powi(2) + dot.v * t_remaining) / length;
+    dot.v += g * t_remaining;
+}
+
+fn debug_dots(
+    q_dots: Query<(&MovingSplineDot, &Sprite)>
+) {
+    for (dot, spr) in q_dots.iter() {
+        let (x, y) = spr.position();
+        draw_text(&format!("t: {:.2?}, v: {:.2?}", dot.t, dot.v), x as i32 - 55, y as i32 + 10).unwrap();
     }
 }
 

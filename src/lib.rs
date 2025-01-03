@@ -10,7 +10,7 @@ mod ui_test;
 mod curve;
 mod builder;
 
-use bevy_app::App;
+use bevy_app::{App, PostUpdate};
 use core::cell::OnceCell;
 use core::ptr::NonNull;
 use pd::display::Display;
@@ -34,7 +34,9 @@ impl State {
 		let mut app = App::new();
 		app
 			.add_plugins(game::register_systems)
-			.add_plugins(ui_test::ui_plugin);
+			.add_plugins(ui_test::ui_plugin)
+			// todo: add .after(propagate_transforms) and .after(sync_simple_transforms)
+			.add_systems(PostUpdate, draw_sprites_system);
 
 		Self {
 			app,
@@ -70,14 +72,16 @@ impl Update for State {
 		// self.app.update();
 		// self.app.run_system
 		self.app.update();
-		
-		draw_sprites();
 
 		System::Default().draw_fps(0, 0);
 		
 
 		UpdateCtrl::Continue
 	}
+}
+
+pub fn draw_sprites_system() {
+	draw_sprites();
 }
 
 

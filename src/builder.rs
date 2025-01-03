@@ -25,7 +25,7 @@ use curve::arc::ArcSegment;
 use curve::line::LineSegment;
 use curve::traits::{CurveSegment, CurveType};
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, PartialEq, Copy, Clone)]
 pub struct MovingSplineDot {
     pub t: f32,
     pub v: f32,

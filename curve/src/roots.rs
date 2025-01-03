@@ -73,9 +73,9 @@ pub fn quadratic(a: f32, b: f32, c: f32) -> Option<Solution<f32>> {
         Ordering::Equal => Some(Solution::One(-b / (2.0 * a))),
         Ordering::Greater => {
             let discriminant_sqrt = bevy_math::ops::sqrt(b * b - 4.0 * a * c);
-            let a = (-b + discriminant_sqrt) / (2.0 * a);
-            let b = (-b - discriminant_sqrt) / (2.0 * a);
-            Some(Solution::Two([a, b]))
+            let r_1 = (-b + discriminant_sqrt) / (2.0 * a);
+            let r_2 = (-b - discriminant_sqrt) / (2.0 * a);
+            Some(Solution::Two([r_1, r_2]))
         }
     }
 }
