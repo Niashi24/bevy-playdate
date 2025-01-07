@@ -491,14 +491,14 @@ impl CurveBuilder {
 
         // Spawn joints
 
-        for i in 1..(self.segments.len() - 1) {
+        for i in 1..self.segments.len() {
             commands.entity(joint_entities[i])
                 .insert(Joint2 {
                     connections: vec![
                         JointConnection {
                             segments: smallvec![
                                 SegmentConnection {
-                                    id: seg_entities[i],
+                                    id: seg_entities[i-1],
                                     t: 1.0,
                                 }
                             ],
@@ -506,7 +506,7 @@ impl CurveBuilder {
                         JointConnection {
                             segments: smallvec![
                                 SegmentConnection {
-                                    id: seg_entities[i+1],
+                                    id: seg_entities[i],
                                     t: 0.0,
                                 }
                             ],
@@ -558,7 +558,7 @@ impl CurveBuilder {
                         JointConnection {
                             segments: smallvec![
                             SegmentConnection {
-                                id: *joint_entities.last().unwrap(),
+                                id: *seg_entities.last().unwrap(),
                                 t: 1.0,
                             },
                         ],
