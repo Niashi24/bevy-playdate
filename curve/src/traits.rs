@@ -1,6 +1,6 @@
-﻿use bevy_math::Dir2;
 use crate::arc::ArcSegment;
 use crate::line::LineSegment;
+use bevy_math::Dir2;
 use derive_more::From;
 use glam::Vec2;
 use ode_solvers::{SVector, System};
@@ -8,17 +8,17 @@ use ode_solvers::{SVector, System};
 pub trait CurveSegment: Send + Sync + 'static {
     /// Length of this curve segment.
     fn length(&self) -> f32;
-    
+
     /// Position at the given `t`-value along the curve segment.
     /// `t` = 0 is the start, `t` = 1 is the end.
     fn position(&self, t: f32) -> Vec2;
-    
+
     /// Direction of the curve at the given `t` value along the curve segment.
     fn dir(&self, t: f32) -> Dir2;
-    
+
     /// Curvature of the curve segment (constant along the curve)
     fn curvature(&self) -> f32;
-    
+
     /// Bounds of the curve segment
     fn bounds(&self) -> (Vec2, Vec2);
 }
@@ -47,8 +47,7 @@ impl<Curve: CurveSegment> System<f32, SVector<f32, 2>> for CurveSegmentSystem<'_
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-#[derive(From)]
+#[derive(Debug, PartialEq, Clone, From)]
 pub enum CurveType {
     Line(LineSegment),
     Arc(ArcSegment),
@@ -90,7 +89,3 @@ impl CurveSegment for CurveType {
         }
     }
 }
-
-
-
-

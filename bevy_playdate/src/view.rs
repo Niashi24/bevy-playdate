@@ -1,4 +1,4 @@
-﻿use crate::dbg;
+use crate::dbg;
 use crate::sprite::Sprite;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::change_detection::*;
@@ -17,12 +17,12 @@ impl Plugin for ViewPlugin {
             view_system
                 .after(bevy_transform::systems::propagate_transforms)
                 .after(bevy_transform::systems::sync_simple_transforms)
-                .before(Sprite::draw_sprites)
+                .before(Sprite::draw_sprites),
         );
     }
 }
 
-/// Add this marker component to an entity to set it as the 
+/// Add this marker component to an entity to set it as the
 #[derive(Component, Copy, Clone, Eq, PartialEq)]
 #[require(Transform)]
 pub struct Camera;
@@ -48,7 +48,7 @@ pub fn view_system(
                 if !transform.is_changed() {
                     continue;
                 }
-                
+
                 let relative = inv * transform.deref().affine();
                 set_sprite_affine(spr.as_mut(), relative);
             }
@@ -58,7 +58,7 @@ pub fn view_system(
             if !transform.is_changed() {
                 continue;
             }
-            
+
             set_sprite_affine(spr.as_mut(), transform.affine());
         }
     }

@@ -1,10 +1,10 @@
-﻿use bevy_math::Dir2;
+use bevy_math::Dir2;
 use glam::{FloatExt, Vec2};
 // use playdate::graphics::api::Api;
 // use playdate::graphics::Graphics;
 // use playdate::sys::ffi::{LCDColor, PDRect};
 use crate::traits::CurveSegment;
-use num_traits::{Float, FloatConst, Euclid};
+use num_traits::{Euclid, Float, FloatConst};
 
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct ArcSegment {
@@ -15,7 +15,12 @@ pub struct ArcSegment {
 }
 
 impl ArcSegment {
-    pub fn from_pos_dir_curvature_length(pos: Vec2, dir: Vec2, curvature: f32, length: f32) -> Self {
+    pub fn from_pos_dir_curvature_length(
+        pos: Vec2,
+        dir: Vec2,
+        curvature: f32,
+        length: f32,
+    ) -> Self {
         let circle = 1.0 / curvature;
         let radius = circle.abs();
         let total_angle = length * curvature;
@@ -33,7 +38,7 @@ impl ArcSegment {
     }
 }
 
-impl CurveSegment for ArcSegment {    
+impl CurveSegment for ArcSegment {
     fn length(&self) -> f32 {
         (self.end - self.start).abs() * self.radius
     }
@@ -70,15 +75,18 @@ impl CurveSegment for ArcSegment {
 
     fn bounds(&self) -> (Vec2, Vec2) {
         // TODO: Replace with more optimized bounds
-        (self.center - Vec2::splat(self.radius), self.center + Vec2::splat(self.radius))
+        (
+            self.center - Vec2::splat(self.radius),
+            self.center + Vec2::splat(self.radius),
+        )
     }
 }
 
 #[cfg(test)]
 mod test {
-    use glam::Vec2;
     use crate::arc::ArcSegment;
     use crate::CurveSegment;
+    use glam::Vec2;
 
     #[test]
     fn test_create_arc() {
@@ -86,7 +94,7 @@ mod test {
         let dir = Vec2::new(0.91, 0.42);
         let curvature = 1.0 / 25.0;
         let length = 50.0;
-        
+
         ArcSegment::from_pos_dir_curvature_length(pos, dir, curvature, length);
 
         ()

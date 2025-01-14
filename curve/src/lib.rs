@@ -1,10 +1,10 @@
 #![no_std]
 
 extern crate alloc;
-pub mod line;
-pub mod traits;
 pub mod arc;
+pub mod line;
 pub mod roots;
+pub mod traits;
 
 use alloc::vec::Vec;
 use glam::Vec2;
@@ -30,10 +30,7 @@ pub struct BSpline {
 
 impl BSpline {
     pub fn new(points: Vec<Vec2>, looped: bool) -> Self {
-        Self {
-            points,
-            looped,
-        }
+        Self { points, looped }
     }
 
     // note: t is [0, 1]
@@ -78,30 +75,25 @@ impl BSpline {
                 p_0_idx,
                 (p_0_idx + 1) % num_segments,
                 (p_0_idx + 2) % num_segments,
-                (p_0_idx + 3) % num_segments
+                (p_0_idx + 3) % num_segments,
             ]
         } else {
-            [
-                p_0_idx,
-                p_0_idx + 1,
-                p_0_idx + 2,
-                p_0_idx + 3,
-            ]
+            [p_0_idx, p_0_idx + 1, p_0_idx + 2, p_0_idx + 3]
         };
 
         CurveSegment::from_points(indices.map(|i| self.points[i]))
     }
-    
+
     fn local_t(&self, t: f32) -> f32 {
         let t = if self.looped {
             f32::div_rem_euclid(&t, &1.0).1
         } else {
             f32::clamp(t, 0.0, 1.0)
         };
-        
+
         (t * self.num_segments() as f32) % 1.0
     }
-    
+
     pub fn position(&self, t: f32) -> Vec2 {
         self.segment_at(t).position(self.local_t(t))
     }
@@ -113,12 +105,12 @@ impl BSpline {
     pub fn acceleration(&self, t: f32) -> Vec2 {
         self.segment_at(t).acceleration(self.local_t(t))
     }
-    
+
     // TODO: Replace with proper bounds
     pub fn bounds(&self) -> (Vec2, Vec2) {
         let (mut min_x, mut min_y) = (f32::INFINITY, f32::INFINITY);
         let (mut max_x, mut max_y) = (f32::NEG_INFINITY, f32::NEG_INFINITY);
-        
+
         for point in &self.points {
             min_x = min_x.min(point.x);
             min_y = min_y.min(point.y);
@@ -128,7 +120,7 @@ impl BSpline {
 
         (Vec2::new(min_x, min_y), Vec2::new(max_x, max_y))
     }
-    
+
     pub fn looped(&self) -> bool {
         self.looped
     }
@@ -150,17 +142,17 @@ impl CurveSegment {
             y: BSPLINE_CHARACTERISTIC * y,
         }
     }
-    
+
     pub fn eval(&self, matrix: Matrix1x4<f32>) -> Vec2 {
         let x = matrix * self.x;
         let y = matrix * self.y;
         Vec2::new(x.x, y.x)
     }
-    
+
     pub fn position(&self, t: f32) -> Vec2 {
         self.eval(Matrix1x4::from([1.0, t, t * t, t * t * t]))
     }
-    
+
     pub fn velocity(&self, t: f32) -> Vec2 {
         self.eval(Matrix1x4::from([0.0, 1.0, 2.0 * t, 3.0 * t * t]))
     }
@@ -186,7 +178,7 @@ mod test {
             Vec2::new(0.0, -5.0),
             Vec2::new(-5.0, 0.0),
         ];
-        
+
         let spline = BSpline::new(points, false);
         assert_eq!(spline.p_0_idx_at(0.0), 0);
         assert_eq!(spline.p_0_idx_at(0.33), 0);
@@ -224,7 +216,7 @@ mod test {
         assert_eq!(spline.p_0_idx_at(0.99), 5);
         assert_eq!(spline.p_0_idx_at(1.0), 5);
     }
-    
+
     #[test]
     fn segment_at_unlooped() {
         let points = vec![
@@ -237,13 +229,14 @@ mod test {
         ];
 
         let spline = BSpline::new(points, false);
-        
+
         let expected_0 = CurveSegment::from_points([
             Vec2::new(-5.0, 5.0),
             Vec2::new(0.0, 0.0),
             Vec2::new(5.0, 5.0),
-            Vec2::new(5.0, 0.0)]);
-        
+            Vec2::new(5.0, 0.0),
+        ]);
+
         assert_eq!(spline.segment_at(0.0), expected_0);
 
         let expected_1 = CurveSegment::from_points([
@@ -256,8 +249,6 @@ mod test {
         assert_eq!(spline.segment_at(1.0), expected_1);
         assert_eq!(spline.segment_at(1.1), expected_1);
     }
-
-
 
     #[test]
     fn segment_at_looped() {
@@ -276,7 +267,8 @@ mod test {
             Vec2::new(-5.0, 5.0),
             Vec2::new(0.0, 0.0),
             Vec2::new(5.0, 5.0),
-            Vec2::new(5.0, 0.0)]);
+            Vec2::new(5.0, 0.0),
+        ]);
 
         assert_eq!(spline.segment_at(0.0), expected_0);
         assert_eq!(spline.segment_at(1.01), expected_0);
@@ -290,19 +282,20 @@ mod test {
 
         // assert_eq!(spline.segment_at(0.), expected_1);
     }
-    
+
     #[test]
     fn eval_point() {
         let segment = CurveSegment::from_points([
             Vec2::new(-5.0, 5.0),
             Vec2::new(0.0, 0.0),
             Vec2::new(5.0, 5.0),
-            Vec2::new(5.0, 0.0)]);
+            Vec2::new(5.0, 0.0),
+        ]);
         // float comparison is bad but it serves the purpose
         assert_eq!(segment.position(0.0), Vec2::new(0.0, 1.6666667));
         assert_eq!(segment.position(1.0), Vec2::new(4.166667, 3.3333335));
     }
-    
+
     #[test]
     fn local_t_looped() {
         let points = vec![
@@ -321,4 +314,3 @@ mod test {
         // assert_eq!(spline.position(1.0 / 24.0), Vec2::new(1.23698, 1.92708));
     }
 }
-

@@ -1,11 +1,10 @@
-
 #![no_std]
 
-pub mod input;
-pub mod sprite;
-pub mod jobs;
-pub mod time;
 pub mod debug;
+pub mod input;
+pub mod jobs;
+pub mod sprite;
+pub mod time;
 pub mod view;
 
 extern crate alloc;
@@ -17,15 +16,12 @@ pub struct DefaultPlugins;
 
 impl Plugin for DefaultPlugins {
     fn build(&self, app: &mut App) {
-        app
-            .add_plugins(
-                (
-                    input::InputPlugin,
-                    sprite::SpritePlugin,
-                    time::TimePlugin,
-                    view::ViewPlugin,
-                    bevy_transform::TransformPlugin,
-                    )
-            );
+        app.add_plugins((
+            input::InputPlugin,
+            sprite::SpritePlugin,
+            time::TimePlugin,
+            view::ViewPlugin,
+            bevy_transform::TransformPlugin,
+        ));
     }
 }

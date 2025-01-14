@@ -1,4 +1,4 @@
-﻿use core::cmp::Ordering;
+use core::cmp::Ordering;
 
 pub enum Solution<T> {
     One(T),
@@ -65,9 +65,9 @@ pub fn quadratic(a: f32, b: f32, c: f32) -> Option<Solution<f32>> {
     if a == 0.0 {
         return linear(b, c).map(Solution::One);
     }
-    
+
     let discriminant = b * b - 4.0 * a * c;
-    
+
     match discriminant.partial_cmp(&0.0)? {
         Ordering::Less => None,
         Ordering::Equal => Some(Solution::One(-b / (2.0 * a))),

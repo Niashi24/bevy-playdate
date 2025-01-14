@@ -1,29 +1,29 @@
-﻿use alloc::rc::Rc;
+use alloc::rc::Rc;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::cmp::Ordering;
-use core::f32::consts::TAU;
-use core::fmt::{Debug, Formatter};
-use num_traits::Euclid;
-use core::mem::swap;
-use core::ops::Range;
 use arrayvec::ArrayVec;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::{Bundle, Commands, Query};
 use bevy_ecs::query::{QueryData, QueryFilter};
 use bevy_math::{Dir2, Rot2};
+use bevy_playdate::dbg;
+use bevy_playdate::sprite::Sprite;
+use core::cmp::Ordering;
+use core::f32::consts::TAU;
+use core::fmt::{Debug, Formatter};
+use core::mem::swap;
+use core::ops::Range;
+use curve::arc::ArcSegment;
+use curve::line::LineSegment;
+use curve::traits::{CurveSegment, CurveType};
 use glam::{FloatExt, Vec2};
+use num_traits::Euclid;
 use pd::graphics::api::Api;
 use pd::graphics::bitmap::{Bitmap, Color, LCDColorConst};
 use pd::graphics::{BitmapFlip, Graphics};
 use pd::sys::ffi::LCDColor;
 use smallvec::{smallvec, SmallVec};
-use bevy_playdate::dbg;
-use bevy_playdate::sprite::Sprite;
-use curve::arc::ArcSegment;
-use curve::line::LineSegment;
-use curve::traits::{CurveSegment, CurveType};
 
 #[derive(Component, Debug, PartialEq, Copy, Clone)]
 pub struct MovingSplineDot {
@@ -90,7 +90,6 @@ impl Segment {
 
         gfx.push_context(&out);
 
-
         match self.curve {
             CurveType::Line(line) => {
                 let start = line.start - min;
@@ -127,7 +126,6 @@ impl Segment {
         }
         // gfx.draw_rect(0, 0, max.x as i32, max.y as i32, LCDColor::XOR);
 
-
         // gfx.fill_rect((start.x - min.x) as i32 - 2, (start.y - min.y) as i32 - 2, 8, 8, LCDColor::BLACK);
         let end = self.curve.position(1.0);
         // gfx.fill_rect((end.x - min.x) as i32 - 2, (end.y - min.y) as i32 - 2, 8, 8, LCDColor::BLACK);
@@ -136,7 +134,6 @@ impl Segment {
 
         // dbg!(s_t, e_t);
 
-
         let mut spr = Sprite::new_from_bitmap(Rc::new(out), BitmapFlip::kBitmapUnflipped);
         spr.set_center(s_t, e_t);
         let pos = self.curve.position(0.0);
@@ -144,13 +141,10 @@ impl Segment {
 
         spr
     }
-    
+
     pub fn to_bundle(self, line_width: i32) -> impl Bundle {
         let sprite = self.to_sprite(Graphics::Cached(), line_width, LCDColor::BLACK);
-        (
-            self,
-            sprite,
-        )
+        (self, sprite)
     }
 }
 
@@ -180,13 +174,12 @@ pub struct Joint2 {
 
 impl Joint2 {
     pub fn new(connections: Vec<JointConnection>) -> Self {
-        
         Joint2 {
             connections,
             // space,
         }
     }
-    
+
     /// Picks the exit that most closely matches with the gravity direction.
     /// Prioritizes exits that are in the same direction or directly perpendicular
     /// (angle between <= 90deg)
@@ -207,17 +200,20 @@ impl Joint2 {
                 v: 0.0,
             };
         }
-        
+
         let enter_segment = q_segment.get(enter_segment_entity).unwrap();
         let enter_vel = enter_segment.curve.dir(t_enter) * v.signum();
-        
+
         let mut best_in_front = None;
         let mut best_any = None;
-        
+
         for connection in self.connections.iter() {
             // ignore exits from those in the same direction
-            if connection.segments.iter()
-                .any(|i| i.id == enter_segment_entity && i.t == t_enter) {
+            if connection
+                .segments
+                .iter()
+                .any(|i| i.id == enter_segment_entity && i.t == t_enter)
+            {
                 continue;
             }
             let segment = q_segment.get(connection.segments[0].id).unwrap();
@@ -246,24 +242,26 @@ impl Joint2 {
                 best_any = Some((target_dot, connection));
             }
         }
-        
+
         let (_, next) = best_in_front
             .or(best_any)
             // safe because length > 1
             .unwrap();
-        
-        let next_dir = q_segment.get(next.segments[0].id).unwrap()
-            .curve.dir(next.segments[0].t);
-        
+
+        let next_dir = q_segment
+            .get(next.segments[0].id)
+            .unwrap()
+            .curve
+            .dir(next.segments[0].t);
+
         let normalized = Rot2::from_sin_cos(next_dir.y, next_dir.x).inverse() * gravity_dir;
         let next_id = next.eval(Dir2::new_unchecked(normalized));
-        
+
         // Our joint's directions are all in the same direction,
         // but might be flipped, so let's use the real one
-        let next_dir = q_segment.get(next_id.id).unwrap()
-            .curve.dir(next_id.t);
+        let next_dir = q_segment.get(next_id.id).unwrap().curve.dir(next_id.t);
         let dot = next_dir.dot(enter_vel);
-        
+
         EnterJointResult {
             next: next_id.id,
             t: next_id.t,
@@ -293,21 +291,21 @@ pub struct JointConnection {
 impl JointConnection {
     /// angle should be from 0 (either negative or positive)
     pub fn eval(&self, dir: Dir2) -> &SegmentConnection {
-        const MIN_ANGLE: f32 = 0.174533;  // 10 degrees
-        
+        const MIN_ANGLE: f32 = 0.174533; // 10 degrees
+
         let len = self.segments.len() as i32;
-        
+
         if len == 1 {
             &self.segments[0]
         } else {
             // avoid doing somewhat expensive atan2 call
             // unless necessary
             let angle = dir.to_angle();
-            
+
             for i in 0..len - 1 {
                 let end = 2 * (i + 1) - len;
                 let end = (end as f32) * MIN_ANGLE;
-                
+
                 if angle < end {
                     return &self.segments[i as usize];
                 }
@@ -325,13 +323,11 @@ struct JointSpace {
 impl Debug for JointSpace {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
         let mut list = f.debug_list();
-        
+
         for (r, i) in self.ranges.iter() {
-            list.entry_with(|f| {
-                write!(f, r#"r=1\left\{{{}\le\theta<{}\right\}}"#, r.start, r.end)
-            });
+            list.entry_with(|f| write!(f, r#"r=1\left\{{{}\le\theta<{}\right\}}"#, r.start, r.end));
         }
-        
+
         list.finish()
     }
 }
@@ -352,7 +348,7 @@ pub struct EnterJointResult {
     pub t: f32,
     pub v: f32,
 }
-// 
+//
 // enum EnterJointResult {
 //     Continue(Entity),
 //     Stop,
@@ -370,12 +366,7 @@ struct Curve {
 }
 
 impl MovingSplineDot2 {
-    pub fn advance(
-        &mut self,
-
-    ) {
-
-    }
+    pub fn advance(&mut self) {}
 }
 
 pub struct CurveBuilder {
@@ -395,22 +386,22 @@ impl CurveBuilder {
             total_length: 0.0,
         }
     }
-    
+
     pub fn push(mut self, builder: impl SectionBuilder) -> Self {
         let segment = builder.add_segment(&mut self.cur_pos, &mut self.cur_dir);
 
-
         println!("{:?}", segment);
 
-        println!("start: {:.2?} w/ {:.2?}, end: {:.2?} w/ {:.2?}",
-                 segment.position(0.0),
-                 segment.dir(0.0),
-                 segment.position(1.0),
-                 segment.dir(1.0)
+        println!(
+            "start: {:.2?} w/ {:.2?}, end: {:.2?} w/ {:.2?}",
+            segment.position(0.0),
+            segment.dir(0.0),
+            segment.position(1.0),
+            segment.dir(1.0)
         );
-        
+
         let len = segment.length();
-        
+
         self.segments.push(SplineSegment {
             running_distance: self.total_length,
             segment,
@@ -437,12 +428,14 @@ impl CurveBuilder {
             let end = self.cur_pos + self.cur_dir * length;
             self.cur_pos = end;
 
-            LineSegment {
-                start,
-                end,
-            }.into()
+            LineSegment { start, end }.into()
         } else {
-            let arc = ArcSegment::from_pos_dir_curvature_length(self.cur_pos, self.cur_dir, curvature, length);
+            let arc = ArcSegment::from_pos_dir_curvature_length(
+                self.cur_pos,
+                self.cur_dir,
+                curvature,
+                length,
+            );
 
             self.cur_pos = arc.position(1.0);
             self.cur_dir = arc.dir(1.0).normalize_or_zero();
@@ -452,11 +445,12 @@ impl CurveBuilder {
 
         println!("{:?}", segment);
 
-        println!("start: {:.2?} w/ {:.2?}, end: {:.2?} w/ {:.2?}",
-                 segment.position(0.0),
-                 segment.dir(0.0).normalize_or_zero(),
-                 segment.position(1.0),
-                 segment.dir(1.0).normalize_or_zero()
+        println!(
+            "start: {:.2?} w/ {:.2?}, end: {:.2?} w/ {:.2?}",
+            segment.position(0.0),
+            segment.dir(0.0).normalize_or_zero(),
+            segment.position(1.0),
+            segment.dir(1.0).normalize_or_zero()
         );
 
         self.segments.push(SplineSegment {
@@ -471,11 +465,10 @@ impl CurveBuilder {
 
     pub fn build(
         self,
-         commands: &mut Commands,
-         line_width: i32,
-         join_ends: bool,
-    ) -> (Vec<Entity>, Vec<Entity>)
-    {
+        commands: &mut Commands,
+        line_width: i32,
+        join_ends: bool,
+    ) -> (Vec<Entity>, Vec<Entity>) {
         if self.segments.is_empty() {
             return Default::default();
         }
@@ -492,78 +485,60 @@ impl CurveBuilder {
         // Spawn joints
 
         for i in 1..self.segments.len() {
-            commands.entity(joint_entities[i])
-                .insert(Joint2 {
-                    connections: vec![
-                        JointConnection {
-                            segments: smallvec![
-                                SegmentConnection {
-                                    id: seg_entities[i-1],
-                                    t: 1.0,
-                                }
-                            ],
-                        },
-                        JointConnection {
-                            segments: smallvec![
-                                SegmentConnection {
-                                    id: seg_entities[i],
-                                    t: 0.0,
-                                }
-                            ],
-                        },
-                    ],
-                });
+            commands.entity(joint_entities[i]).insert(Joint2 {
+                connections: vec![
+                    JointConnection {
+                        segments: smallvec![SegmentConnection {
+                            id: seg_entities[i - 1],
+                            t: 1.0,
+                        }],
+                    },
+                    JointConnection {
+                        segments: smallvec![SegmentConnection {
+                            id: seg_entities[i],
+                            t: 0.0,
+                        }],
+                    },
+                ],
+            });
         }
 
         if join_ends {
-            commands.entity(joint_entities[0])
-                .insert(Joint2 {
-                    connections: vec![
-                        JointConnection {
-                            segments: smallvec![
-                                SegmentConnection {
-                                    id: seg_entities[0],
-                                    t: 0.0,
-                                },
-                            ],
-                        },
-                        JointConnection {
-                            segments: smallvec![
-                                SegmentConnection {
-                                    id: *seg_entities.last().unwrap(),
-                                    t: 1.0,
-                                },
-                            ],
-                        },
-                    ],
-                });
+            commands.entity(joint_entities[0]).insert(Joint2 {
+                connections: vec![
+                    JointConnection {
+                        segments: smallvec![SegmentConnection {
+                            id: seg_entities[0],
+                            t: 0.0,
+                        },],
+                    },
+                    JointConnection {
+                        segments: smallvec![SegmentConnection {
+                            id: *seg_entities.last().unwrap(),
+                            t: 1.0,
+                        },],
+                    },
+                ],
+            });
         } else {
-            commands.entity(joint_entities[0])
-                .insert(Joint2 {
-                    connections: vec![
-                        JointConnection {
-                            segments: smallvec![
-                            SegmentConnection {
-                                id: seg_entities[0],
-                                t: 0.0,
-                            }
-                        ],
-                        }
-                    ],
-                });
+            commands.entity(joint_entities[0]).insert(Joint2 {
+                connections: vec![JointConnection {
+                    segments: smallvec![SegmentConnection {
+                        id: seg_entities[0],
+                        t: 0.0,
+                    }],
+                }],
+            });
 
-            commands.entity(*joint_entities.last().unwrap())
+            commands
+                .entity(*joint_entities.last().unwrap())
                 .insert(Joint2 {
-                    connections: vec![
-                        JointConnection {
-                            segments: smallvec![
-                            SegmentConnection {
-                                id: *seg_entities.last().unwrap(),
-                                t: 1.0,
-                            },
-                        ],
-                        }
-                    ],
+                    connections: vec![JointConnection {
+                        segments: smallvec![SegmentConnection {
+                            id: *seg_entities.last().unwrap(),
+                            t: 1.0,
+                        },],
+                    }],
                 });
         }
 
@@ -578,7 +553,8 @@ impl CurveBuilder {
                 end_joint: joint_entities[(i + 1) % joint_entities.len()],
             };
 
-            commands.entity(seg_entities[i])
+            commands
+                .entity(seg_entities[i])
                 .insert(segment.to_bundle(line_width));
         }
 
@@ -587,7 +563,7 @@ impl CurveBuilder {
 }
 
 pub trait SectionBuilder {
-    /// takes in previous 
+    /// takes in previous
     fn add_segment(self, pos: &mut Vec2, dir: &mut Vec2) -> CurveType;
 }
 
@@ -598,12 +574,12 @@ impl<F: FnOnce(&mut Vec2, &mut Vec2) -> CurveType> SectionBuilder for F {
 }
 
 pub mod builders {
-    use glam::Vec2;
-    use num_traits::FloatConst;
+    use crate::builder::SectionBuilder;
     use curve::arc::ArcSegment;
     use curve::line::LineSegment;
     use curve::traits::{CurveSegment, CurveType};
-    use crate::builder::SectionBuilder;
+    use glam::Vec2;
+    use num_traits::FloatConst;
 
     pub fn line(length: f32) -> impl SectionBuilder {
         move |pos: &mut Vec2, dir: &mut Vec2| {
@@ -611,13 +587,10 @@ pub mod builders {
             let end = *pos + *dir * length;
             *pos = end;
 
-            LineSegment {
-                start,
-                end,
-            }.into()
+            LineSegment { start, end }.into()
         }
     }
-    
+
     pub fn arc_curvature_length(length: f32, curvature: f32) -> impl SectionBuilder {
         move |pos: &mut Vec2, dir: &mut Vec2| {
             let arc = ArcSegment::from_pos_dir_curvature_length(*pos, *dir, curvature, length);
@@ -628,7 +601,7 @@ pub mod builders {
             arc.into()
         }
     }
-    
+
     /// Appends an arc with the given radius and number of revolutions (1 revolution = 1 full circle).
     /// Use positive revolutions to go counterclockwise, negative for clockwise.
     /// Panics if you put in a negative radius.
@@ -638,7 +611,6 @@ pub mod builders {
         arc_curvature_length(length, curvature)
     }
 }
-
 
 struct SplineSegment {
     pub running_distance: f32,
