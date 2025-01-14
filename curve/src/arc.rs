@@ -15,7 +15,7 @@ pub struct ArcSegment {
 }
 
 impl ArcSegment {
-    pub fn from_pos_dir_curvature_length(pos: Vec2, mut dir: Vec2, curvature: f32, length: f32) -> Self {
+    pub fn from_pos_dir_curvature_length(pos: Vec2, dir: Vec2, curvature: f32, length: f32) -> Self {
         let circle = 1.0 / curvature;
         let radius = circle.abs();
         let total_angle = length * curvature;

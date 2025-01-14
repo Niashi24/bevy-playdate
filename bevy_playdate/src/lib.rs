@@ -3,14 +3,29 @@
 
 pub mod input;
 pub mod sprite;
-mod bitmap;
 pub mod jobs;
 pub mod time;
 pub mod debug;
+pub mod view;
 
 extern crate alloc;
 
+use bevy_app::{App, Plugin};
 use bevy_ecs::prelude::*;
-use playdate::graphics::api::Cache;
-use playdate::graphics::Graphics as PlaydateGraphics;
 
+pub struct DefaultPlugins;
+
+impl Plugin for DefaultPlugins {
+    fn build(&self, app: &mut App) {
+        app
+            .add_plugins(
+                (
+                    input::InputPlugin,
+                    sprite::SpritePlugin,
+                    time::TimePlugin,
+                    view::ViewPlugin,
+                    bevy_transform::TransformPlugin,
+                    )
+            );
+    }
+}

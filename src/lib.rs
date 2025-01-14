@@ -22,6 +22,7 @@ use pd::sys::ffi::PlaydateAPI;
 use pd::sys::EventLoopCtrl;
 use pd::system::prelude::*;
 use pd::system::update::UpdateCtrl;
+use bevy_playdate::DefaultPlugins;
 
 /// Game state
 struct State {
@@ -33,6 +34,7 @@ impl State {
 	fn new() -> Self {
 		let mut app = App::new();
 		app
+			.add_plugins(DefaultPlugins)
 			.add_plugins(game::register_systems)
 			.add_plugins(ui_test::ui_plugin)
 			// todo: add .after(propagate_transforms) and .after(sync_simple_transforms)

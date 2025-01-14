@@ -1,15 +1,14 @@
 #![no_std]
 
+extern crate alloc;
 pub mod line;
 pub mod traits;
 pub mod arc;
 pub mod roots;
 
-extern crate alloc;
-
 use alloc::vec::Vec;
 use glam::Vec2;
-use nalgebra::{matrix, Matrix1x4, Matrix4, Matrix4x1, SMatrix};
+use nalgebra::{matrix, Matrix1x4, Matrix4, Matrix4x1};
 use num_traits::Euclid;
 // use num_traits::ops::euclid::Euclid;
 
@@ -173,9 +172,9 @@ impl CurveSegment {
 
 #[cfg(test)]
 mod test {
+    use crate::{BSpline, CurveSegment};
     use alloc::vec;
     use glam::Vec2;
-    use crate::{BSpline, CurveSegment};
 
     #[test]
     fn p_0_idx_unlooped() {

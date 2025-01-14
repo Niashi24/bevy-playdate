@@ -1,7 +1,9 @@
 ﻿use crate::builder::builders::{arc, line};
 use crate::builder::{CurveBuilder, Joint2, JointConnection, MovingSplineDot, Segment, SegmentConnection};
 use alloc::{format, vec};
+use alloc::rc::{Rc, Weak};
 use alloc::vec::Vec;
+use core::cell::{LazyCell, RefCell};
 use core::cmp::Ordering;
 use bevy_app::{App, PostUpdate, Update};
 use bevy_ecs::prelude::*;
@@ -11,6 +13,7 @@ use bevy_playdate::input::{CrankInput, InputPlugin};
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::{Time, TimePlugin};
 use core::f32::consts::{FRAC_PI_2, PI, TAU};
+use bevy_transform::prelude::Transform;
 use curve::arc::ArcSegment;
 use curve::line::LineSegment;
 use curve::traits::{CurveSegment, CurveType};
@@ -33,9 +36,6 @@ pub struct AppUpdate;
 
 pub fn register_systems(app: &mut App) {
     // graphics.set_
-    app
-        .add_plugins(InputPlugin)
-        .add_plugins(TimePlugin);
     
     app.insert_non_send_resource(Graphics::Cached());
     
@@ -609,14 +609,11 @@ fn test_circle(commands: &mut Commands) {
         })
         .insert(Name::new("Joint"));
 
-    let mut sprite = Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
-        gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
-    });
-
     commands.spawn_batch(
         (0..1).into_iter()
             .map(move |i| (
-                sprite.clone(),
+                CIRCLE.clone(),
+                Transform::IDENTITY,
                 MovingSplineDot {
                     t: i as f32 * 0.1,
                     v: 0.0,
@@ -627,6 +624,9 @@ fn test_circle(commands: &mut Commands) {
     );
 }
 
+const CIRCLE: LazyCell<Sprite> = LazyCell::new(|| Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
+    gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
+}));
 
 fn rotate(v: Vec2, angle: f32) -> Vec2 {
     let (sin, cos) = (f32::sin(angle), f32::cos(angle));
@@ -634,7 +634,7 @@ fn rotate(v: Vec2, angle: f32) -> Vec2 {
 }
 
 fn move_spline_dot(
-    mut dots: Query<(&mut MovingSplineDot, &mut Sprite)>,
+    mut dots: Query<(&mut MovingSplineDot, &mut Transform)>,
     q_segments: Query<&Segment>,
     q_joints: Query<&Joint2>,
     crank: Res<CrankInput>,
@@ -642,17 +642,24 @@ fn move_spline_dot(
 ) {
     let gravity = rotate(Vec2::NEG_Y, crank.angle.to_radians()) * 100.0;
     
-    for (mut dot, mut sprite) in &mut dots {
+    for (mut dot, mut transform) in &mut dots {
         move_dot_recursive(dot.as_mut(), time.delta_seconds(), 0, gravity, &q_segments, &q_joints);
         dot.v *= 0.999;
         
         let new_pos = q_segments.get(dot.spline_entity).unwrap()
             .curve.position(dot.t);
         
-        sprite.move_to(new_pos.x, new_pos.y);
+        transform.translation = new_pos.extend(0.0);
+        
+        
+        // sprite.move_to(new_pos.x, new_pos.y);
     }
 }
 
+// todo:
+//  velocity direction should be kept through iterations
+//  so it is the same w/ or w/o the joint
+//  i.e. acceleration added only once
 fn move_dot_recursive(
     dot: &mut MovingSplineDot,
     t_remaining: f32,
@@ -681,7 +688,14 @@ fn move_dot_recursive(
     let v = dot.v;
     let t = dot.t;
 
-    let mut change_joints = |dot: &mut MovingSplineDot, new_joint: Entity, old_t: f32| {
+    fn change_joints(
+        dot: &mut MovingSplineDot,
+        new_joint: Entity,
+        old_t: f32,
+        gravity: Vec2,
+        q_segments: &Query<&Segment>,
+        q_joints: &Query<&Joint2>,
+    ) {
         let joint = q_joints.get(new_joint).unwrap();
         let result = joint.enter(
             dot.v,
@@ -694,13 +708,13 @@ fn move_dot_recursive(
         dot.t = result.t;
         dot.v = result.v;
         dot.spline_entity = result.next;
-    };
+    }
     
     // this is really just for the case where joint is not connected (dot is clamped and stopped),
     // then is reconnected, which might be a mechanic but otherwise probably won't happen
     if (t == 1.0 && (v > 0.0 || (v == 0.0 && g > 0.0))) {
         let old_dot = *dot;
-        change_joints(dot, segment.end_joint, t);
+        change_joints(dot, segment.end_joint, t, gravity, q_segments, q_joints);
         if *dot == old_dot {
             return;
         }
@@ -709,7 +723,7 @@ fn move_dot_recursive(
     }
     if (t == 0.0 && (v < 0.0 || (v == 0.0 && g < 0.0))) {
         let old_dot = *dot;
-        change_joints(dot, segment.start_joint, t);
+        change_joints(dot, segment.start_joint, t, gravity, q_segments, q_joints);
         if *dot == old_dot {
             return;
         }
@@ -735,7 +749,7 @@ fn move_dot_recursive(
         dot.v += g * time / length;
         
         let old_dot = *dot;
-        change_joints(dot, joint, t_old);
+        change_joints(dot, joint, t_old, gravity, q_segments, q_joints);
         if *dot == old_dot {
             return;
         }
@@ -749,6 +763,10 @@ fn move_dot_recursive(
     dot.t = dot.t.clamp(0.0, 1.0);
 }
 
+// todo:
+//  this approach could work but if the ball enters and exits a joint (or multiple)
+//  in the same frame it won't trigger (what if we want effects in the future?)
+//      ok maybe it doesn't matter
 fn move_dot_2(
     dot: &mut MovingSplineDot,
     gravity: Vec2,
@@ -765,29 +783,43 @@ fn move_dot_2(
     
     
     if dot.v == 0.0 && g == 0.0 {
-        
+        return;
     }
     
-    dot.t += (0.5 * g * time.powi(2) + dot.v * time) / length;
+    let mut traveled = (0.5 * g * time + dot.v) * time;
+    
+    dot.t += traveled / length;
     dot.v += g * time;
     
-    // while dot.t > 1.0 {
-    //     dot.t -= 1.0;
-    // 
-    //     let joint = q_joints.get(new_joint).unwrap();
-    //     let result = joint.enter(
-    //         dot.v,
-    //         Dir2::new(gravity).unwrap(),
-    //         dot.spline_entity,
-    //         old_t,
-    //         &q_segments,
-    //     );
-    // 
-    //     dot.t = result.t;
-    //     dot.v = result.v;
-    //     dot.spline_entity = result.next;        
-    // }
+    while dot.t > 1.0 {
+        dot.t -= 1.0;
+    
+        let joint = q_joints.get(segment.end_joint).unwrap();
+        let result = joint.enter(
+            dot.v,
+            Dir2::new(gravity).unwrap(),
+            dot.spline_entity,
+            1.0,
+            &q_segments,
+        );
+    
+        dot.t = result.t;
+        dot.v = result.v;
+        dot.spline_entity = result.next;
+        
+        
+    }
 }
+
+// fn move_recursive_2(
+//     remaining_distance: f32,
+// ) {
+//     let distance_to_traverse = f(t, v, length);
+//     
+//     if remaining_distance >= distance_to_traverse {
+//         
+//     }
+// }
 
 fn debug_dots(
     q_dots: Query<(&MovingSplineDot, &Sprite)>

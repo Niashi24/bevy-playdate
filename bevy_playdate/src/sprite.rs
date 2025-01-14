@@ -1,6 +1,7 @@
 ﻿use alloc::rc::Rc;
 use alloc::string::String;
 use core::ptr::NonNull;
+use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::component::{Component, ComponentHooks, ComponentId, StorageType};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::world::DeferredWorld;
@@ -13,6 +14,18 @@ use playdate::sys::ffi::{LCDBitmap, LCDSolidColor, LCDSprite, PDRect};
 use playdate::sys::traits::AsRaw;
 use playdate::sprite::Sprite as PDSprite;
 use derive_more::Deref;
+
+pub struct SpritePlugin;
+
+impl Plugin for SpritePlugin {
+    fn build(&self, app: &mut App) {
+        // todo: reflect component
+        app.add_systems(
+            PostUpdate,
+            Sprite::draw_sprites,
+        );
+    }
+}
 
 #[derive(Component, Clone, Deref)]
 #[component(on_add = add_to_display_list)]
@@ -81,6 +94,14 @@ impl Sprite {
     /// This is automatically called when inserting this into an entity.
     pub fn remove_from_display_list(&self) {
         self.spr.remove();
+    }
+
+    /// System to draw all sprites to the screen. Calls [`playdate::sprite::draw_sprites`].
+    /// 
+    /// If your draw calls are not showing up, order that system after this one.
+    #[inline]
+    pub fn draw_sprites() {
+        playdate::sprite::draw_sprites();
     }
 }
 
