@@ -10,14 +10,14 @@ macro_rules! dbg {
     // `$val` expression could be a block (`{ .. }`), in which case the `eprintln!`
     // will be malformed.
     () => {
-        println!("[{}:{}:{}]", file!(), line!(), column!())
+        playdate::println!("[{}:{}:{}]", file!(), line!(), column!())
     };
     ($val:expr $(,)?) => {
         // Use of `match` here is intentional because it affects the lifetimes
         // of temporaries - https://stackoverflow.com/a/48732525/1063961
         match $val {
             tmp => {
-                println!("[{}:{}:{}] {} = {:#?}",
+                playdate::println!("[{}:{}:{}] {} = {:#?}",
                     file!(), line!(), column!(), stringify!($val), &tmp);
                 tmp
             }

@@ -1,4 +1,3 @@
-use crate::dbg;
 use crate::sprite::Sprite;
 use bevy_app::{App, Plugin, PostUpdate};
 use bevy_ecs::change_detection::*;
@@ -6,7 +5,6 @@ use bevy_ecs::prelude::*;
 use bevy_math::{Affine2, Affine3A};
 use bevy_transform::prelude::{GlobalTransform, Transform};
 use core::ops::Deref;
-use playdate::println;
 
 pub struct ViewPlugin;
 
