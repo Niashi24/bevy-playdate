@@ -36,6 +36,7 @@ pub fn test_builder(commands: &mut Commands) {
 
     commands.spawn_batch((0..1).into_iter().map(move |i| {
         (
+            Name::new("Dot"),
             sprite.clone(),
             MovingSplineDot {
                 t: i as f32 * 0.1,
@@ -66,16 +67,19 @@ pub fn test_branch(commands: &mut Commands) {
 
     // top
     commands.entity(segments[0]).insert(
-        Segment {
-            curve: CurveType::Line(LineSegment {
-                start: Vec2::new(20.0, 20.0),
-                end: Vec2::new(100.0, 100.0),
-            }),
-            parent: Entity::PLACEHOLDER,
-            start_joint: joints[0],
-            end_joint: joints[3],
-        }
-            .to_bundle(4),
+        (
+            Segment {
+                curve: CurveType::Line(LineSegment {
+                    start: Vec2::new(20.0, 20.0),
+                    end: Vec2::new(100.0, 100.0),
+                }),
+                parent: Entity::PLACEHOLDER,
+                start_joint: joints[0],
+                end_joint: joints[3],
+            }
+                .to_bundle(4),
+            Name::new("Segment (Top)"),
+        ),
     );
 
     // bottom
@@ -90,7 +94,7 @@ pub fn test_branch(commands: &mut Commands) {
             end_joint: joints[3],
         }
             .to_bundle(4),
-    );
+    ).insert(Name::new("Segment (Bottom)"));
 
     // right
     commands.entity(segments[2]).insert(
@@ -104,7 +108,7 @@ pub fn test_branch(commands: &mut Commands) {
             end_joint: joints[2],
         }
             .to_bundle(4),
-    );
+    ).insert(Name::new("Segment (Right)"));
 
     commands.entity(joints[0]).insert(Joint {
         connections: smallvec![JointConnection {
@@ -113,7 +117,7 @@ pub fn test_branch(commands: &mut Commands) {
                 t: 0.0,
             }],
         }],
-    });
+    }).insert(Name::new("Joint (Top)"));
 
     commands.entity(joints[1]).insert(Joint {
         connections: smallvec![JointConnection {
@@ -122,7 +126,7 @@ pub fn test_branch(commands: &mut Commands) {
                 t: 0.0,
             }],
         }],
-    });
+    }).insert(Name::new("Joint (Bottom)"));
 
     commands.entity(joints[2]).insert(Joint {
         connections: smallvec![JointConnection {
@@ -131,7 +135,7 @@ pub fn test_branch(commands: &mut Commands) {
                 t: 1.0,
             }],
         }],
-    });
+    }).insert(Name::new("Joint (Right)"));
 
     commands.entity(joints[3]).insert(Joint {
         connections: smallvec![
@@ -154,14 +158,11 @@ pub fn test_branch(commands: &mut Commands) {
                 }],
             },
         ],
-    });
-
-    let mut sprite = Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
-        gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
-    });
+    }).insert(Name::new("Joint (Center)"));
 
     commands.spawn((
-        sprite,
+        Name::new("Dot (Branch)"),
+        CIRCLE.clone(),
         Transform::default(),
         MovingSplineDot {
             t: 0.5,
@@ -172,19 +173,19 @@ pub fn test_branch(commands: &mut Commands) {
 }
 
 pub fn test_3_way_curve(commands: &mut Commands) {
-    let top_segment = commands.spawn_empty().id();
-    let left_segment = commands.spawn_empty().id();
-    let right_segment = commands.spawn_empty().id();
-    let left_top_segment = commands.spawn_empty().id();
-    let right_top_segment = commands.spawn_empty().id();
-    let left_right_segment = commands.spawn_empty().id();
+    let top_segment = commands.spawn(Name::new("Segment (Top)")).id();
+    let left_segment = commands.spawn(Name::new("Segment (Left)")).id();
+    let right_segment = commands.spawn(Name::new("Segment (Right)")).id();
+    let left_top_segment = commands.spawn(Name::new("Segment (Left-Top)")).id();
+    let right_top_segment = commands.spawn(Name::new("Segment (Right-Top)")).id();
+    let left_right_segment = commands.spawn(Name::new("Segment (Left-Right)")).id();
 
-    let top_single_joint = commands.spawn_empty().id();
-    let top_multi_joint = commands.spawn_empty().id();
-    let left_single_joint = commands.spawn_empty().id();
-    let left_multi_joint = commands.spawn_empty().id();
-    let right_single_joint = commands.spawn_empty().id();
-    let right_multi_joint = commands.spawn_empty().id();
+    let top_single_joint = commands.spawn(Name::new("Joint (Top Single)")).id();
+    let top_multi_joint = commands.spawn(Name::new("Joint (Top Multi)")).id();
+    let left_single_joint = commands.spawn(Name::new("Joint (Left Single)")).id();
+    let left_multi_joint = commands.spawn(Name::new("Joint (Left Multi)")).id();
+    let right_single_joint = commands.spawn(Name::new("Joint (Right Single)")).id();
+    let right_multi_joint = commands.spawn(Name::new("Joint (Right Multi)")).id();
 
     let top_left = Vec2::new(100.0, 50.0);
     let line_width = 3;
@@ -376,6 +377,7 @@ pub fn test_3_way_curve(commands: &mut Commands) {
 
     commands.spawn_batch((0..1).into_iter().map(move |i| {
         (
+            Name::new("Dot (3-way)"),
             sprite.clone(),
             Transform::default(),
             MovingSplineDot {
@@ -434,8 +436,9 @@ pub fn test_circle(commands: &mut Commands) {
 
     commands.spawn_batch((0..1).into_iter().map(move |i| {
         (
+            Name::new("Dot (Circle)"),
             CIRCLE.clone(),
-            Transform::IDENTITY,
+            Transform::default(),
             MovingSplineDot {
                 t: i as f32 * 0.1,
                 v: 0.0,

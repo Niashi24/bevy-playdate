@@ -71,8 +71,7 @@ impl Update for State {
         // self.app.update();
         // self.app.run_system
         self.app.update();
-
-
+        
         UpdateCtrl::Continue
     }
 }

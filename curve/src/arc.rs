@@ -1,4 +1,5 @@
 use bevy_math::Dir2;
+use bevy_reflect::Reflect;
 use glam::{FloatExt, Vec2};
 // use playdate::graphics::api::Api;
 // use playdate::graphics::Graphics;
@@ -6,7 +7,7 @@ use glam::{FloatExt, Vec2};
 use crate::traits::CurveSegment;
 use num_traits::{Euclid, Float, FloatConst};
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Reflect)]
 pub struct ArcSegment {
     pub center: Vec2,
     pub start: f32,

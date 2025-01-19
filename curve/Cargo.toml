@@ -11,3 +11,4 @@ num-traits = { version = "0.2.19", default-features = false, features = ["libm"]
 derive_more = { version = "1.0.0", default-features = false, features = ["full"] }
 ode_solvers = { git = "https://github.com/Niashi24/ode-solvers.git", branch = "no_std" }
 bevy_math = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["libm", "alloc"] }
+bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy", "glam"]}

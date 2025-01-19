@@ -30,6 +30,7 @@ pub fn register_systems(app: &mut App) {
     // graphics.set_
 
     app.insert_non_send_resource(Graphics::Cached());
+    app.add_plugins(super::curve::CurvePlugin);
 
     app.add_systems(Update, (
         move_spline_dot,

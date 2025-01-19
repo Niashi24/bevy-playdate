@@ -5,6 +5,7 @@ use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::{Bundle, Commands};
 use bevy_ecs::query::{QueryData, QueryFilter};
 use core::fmt::Debug;
+use bevy_ecs::name::Name;
 use curve::arc::ArcSegment;
 use curve::line::LineSegment;
 use curve::traits::{CurveSegment, CurveType};
@@ -110,10 +111,10 @@ impl CurveBuilder {
         let parent = commands.spawn_empty().id();
 
         let seg_entities: Vec<Entity> = (0..self.segments.len())
-            .map(|_| commands.spawn_empty().id())
+            .map(|_| commands.spawn(Name::new("Segment")).id())
             .collect();
         let joint_entities: Vec<Entity> = (0..self.segments.len() + if join_ends { 0 } else { 1 })
-            .map(|_| commands.spawn_empty().id())
+            .map(|_| commands.spawn(Name::new("Joint")).id())
             .collect();
 
         // Spawn joints

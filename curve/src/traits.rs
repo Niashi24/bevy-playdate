@@ -1,6 +1,7 @@
 use crate::arc::ArcSegment;
 use crate::line::LineSegment;
 use bevy_math::Dir2;
+use bevy_reflect::Reflect;
 use derive_more::From;
 use glam::Vec2;
 use ode_solvers::{SVector, System};
@@ -47,7 +48,7 @@ impl<Curve: CurveSegment> System<f32, SVector<f32, 2>> for CurveSegmentSystem<'_
     }
 }
 
-#[derive(Debug, PartialEq, Clone, From)]
+#[derive(Debug, PartialEq, Clone, From, Reflect)]
 pub enum CurveType {
     Line(LineSegment),
     Arc(ArcSegment),

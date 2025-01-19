@@ -1,11 +1,12 @@
 ﻿use bevy_math::Dir2;
+use bevy_reflect::Reflect;
 use glam::Vec2;
 // use playdate::graphics::api::Api;
 // use playdate::graphics::Graphics;
 // use playdate::sys::ffi::{LCDColor, PDRect};
 use crate::traits::CurveSegment;
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Reflect)]
 pub struct LineSegment {
     pub start: Vec2,
     pub end: Vec2,

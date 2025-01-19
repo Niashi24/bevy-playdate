@@ -62,6 +62,8 @@ pub fn toggle_debug_system(
     }
 }
 
+// pub fn debug_print
+
 #[derive(Resource, Default)]
 pub struct Debug {
     pub enabled: bool,

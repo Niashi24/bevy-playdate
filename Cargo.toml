@@ -18,9 +18,10 @@ members = [
 
 [dependencies]
 playdate = "*"
-bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false }
+bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect"] }
 bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false }
 bevy_math = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["libm", "alloc"] }
+bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy"]}
 bevy_transform = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["libm", "alloc", "bevy-support"] }
 arrayvec = { version = "0.7.6", default-features = false }
 glam = { version = "0.29.2", default-features = false, features = ["libm"] }

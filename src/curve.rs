@@ -1,11 +1,14 @@
 use alloc::rc::Rc;
 use core::f32::consts::TAU;
 use core::mem::swap;
+use bevy_app::{App, Plugin};
 use bevy_ecs::bundle::Bundle;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Query;
 use bevy_math::{Dir2, Rot2};
+use bevy_reflect::Reflect;
+use bevy_ecs::reflect::ReflectComponent;
 use glam::{FloatExt, Vec2};
 use pd::graphics::api::Api;
 use pd::graphics::bitmap::{Bitmap, Color};
@@ -16,7 +19,18 @@ use smallvec::SmallVec;
 use bevy_playdate::sprite::Sprite;
 use curve::traits::{CurveSegment, CurveType};
 
-#[derive(Component, Clone, PartialEq, Debug)]
+pub struct CurvePlugin;
+
+impl Plugin for CurvePlugin {
+    fn build(&self, app: &mut App) {
+        app
+            .register_type::<Segment>()
+            .register_type::<Joint>();
+    }
+}
+
+#[derive(Component, Reflect, Clone, PartialEq, Debug)]
+#[reflect(Component)]
 pub struct Segment {
     /// The actual curve on the segment
     pub curve: CurveType,
@@ -125,7 +139,8 @@ impl Segment {
     }
 }
 
-#[derive(Clone, PartialEq, Debug, Component)]
+#[derive(Clone, PartialEq, Debug, Component, Reflect)]
+#[reflect(Component)]
 pub struct Joint {
     pub connections: SmallVec<[JointConnection; 2]>,
 }
@@ -228,7 +243,7 @@ impl Joint {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Reflect)]
 pub struct SegmentConnection {
     /// The entity for this segment.
     pub id: Entity,
@@ -239,7 +254,7 @@ pub struct SegmentConnection {
     pub t: f32,
 }
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Debug, Reflect)]
 /// Contains all the segments pointing in the same direction,
 /// sorted by curvature
 pub struct JointConnection {
