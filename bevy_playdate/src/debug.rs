@@ -1,7 +1,13 @@
 use alloc::collections::VecDeque;
-use bevy_ecs::prelude::Resource;
+use bevy_app::{App, Plugin, PostUpdate};
+use bevy_ecs::observer::Trigger;
+use bevy_ecs::prelude::{IntoSystemConfigs, Resource};
+use bevy_ecs::system::{Res, ResMut};
 use playdate::api;
+use playdate::sprite::draw_sprites;
 use playdate::sys::ffi::LCDColor;
+use playdate::system::System;
+use crate::event::SystemEvent;
 
 #[macro_export]
 macro_rules! dbg {
@@ -28,9 +34,44 @@ macro_rules! dbg {
     };
 }
 
-#[derive(Resource)]
+pub struct DebugPlugin;
+
+impl Plugin for DebugPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<Debug>()
+            .add_observer(toggle_debug_system)
+            .add_systems(PostUpdate, draw_fps_top_left.after(draw_sprites).run_if(in_debug));
+    }
+}
+
+pub fn in_debug(debug: Res<Debug>) -> bool {
+    debug.enabled
+}
+
+pub fn draw_fps_top_left() {
+    System::Default().draw_fps(0, 0);
+}
+
+pub fn toggle_debug_system(
+    trigger: Trigger<SystemEvent>,
+    mut debug: ResMut<Debug>,
+) {
+    const BACKTICK: u32 = 96;
+    if matches!(*trigger.event(), SystemEvent::KeyPressed(96)) {
+        debug.toggle_enabled();
+    }
+}
+
+#[derive(Resource, Default)]
 pub struct Debug {
+    pub enabled: bool,
     command_queue: VecDeque<DebugCommand>,
+}
+
+impl Debug {
+    pub fn toggle_enabled(&mut self) {
+        self.enabled = !self.enabled;
+    }
 }
 
 enum DebugCommand {

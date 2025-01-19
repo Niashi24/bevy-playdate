@@ -41,6 +41,7 @@ pub fn test_builder(commands: &mut Commands) {
                 v: 0.5,
                 spline_entity: segments[i],
             },
+            Transform::default(),
         )
     }));
 }
@@ -372,7 +373,7 @@ pub fn test_3_way_curve(commands: &mut Commands) {
 
     sprite.set_z_index(10);
 
-    commands.spawn_batch((0..10).into_iter().map(move |i| {
+    commands.spawn_batch((0..1).into_iter().map(move |i| {
         (
             sprite.clone(),
             Transform::default(),

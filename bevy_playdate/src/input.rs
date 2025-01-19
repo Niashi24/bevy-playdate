@@ -1,6 +1,8 @@
 ﻿use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::schedule::{IntoSystemConfigs, SystemSet};
 use bevy_ecs::system::{NonSend, ResMut, Resource};
+use bevy_reflect::prelude::{Reflect, ReflectDefault};
+use bevy_ecs::reflect::ReflectResource;
 use playdate::controls::api::Cache;
 use playdate::controls::peripherals::{Accelerometer, Crank};
 
@@ -13,6 +15,8 @@ impl Plugin for InputPlugin {
             .init_resource::<CrankInput>()
             .insert_non_send_resource(Accelerometer::Cached())
             .init_resource::<AccelerometerInput>()
+            .register_type::<CrankInput>()
+            .register_type::<AccelerometerInput>()
             .add_systems(
                 PreUpdate,
                 (crank_input_system, accelerometer_input_system).in_set(PdInputSystem),
@@ -25,7 +29,8 @@ impl Plugin for InputPlugin {
 pub struct PdInputSystem;
 
 /// A resource reporting the current input or state of the crank.
-#[derive(Resource, Copy, Clone, Debug, PartialEq, Default)]
+#[derive(Resource, Reflect, Copy, Clone, Debug, PartialEq, Default)]
+#[reflect(Resource, Default)]
 pub struct CrankInput {
     /// The angle change of the crank this frame.
     /// Negative values are anti-clockwise.
@@ -46,7 +51,8 @@ pub fn crank_input_system(mut input: ResMut<CrankInput>, crank: NonSend<Crank<Ca
 }
 
 /// A resource reporting the current input or state of the accelerometer.
-#[derive(Resource, Copy, Clone, Debug, PartialEq, Default)]
+#[derive(Resource, Reflect, Copy, Clone, Debug, PartialEq, Default)]
+#[reflect(Resource, Default)]
 pub struct AccelerometerInput {
     pub x: f32,
     pub y: f32,

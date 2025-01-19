@@ -9,7 +9,7 @@ use playdate::graphics::api::Cache;
 use playdate::graphics::bitmap::Bitmap;
 use playdate::graphics::color::Color;
 use playdate::graphics::{BitmapFlip, BitmapFlipExt, Graphics};
-use playdate::sprite::Sprite as PDSprite;
+use playdate::sprite::{draw_sprites, Sprite as PDSprite};
 use playdate::sys::traits::AsRaw;
 
 pub struct SpritePlugin;
@@ -17,7 +17,7 @@ pub struct SpritePlugin;
 impl Plugin for SpritePlugin {
     fn build(&self, app: &mut App) {
         // todo: reflect component
-        app.add_systems(PostUpdate, Sprite::draw_sprites);
+        app.add_systems(PostUpdate, draw_sprites);
     }
 }
 
@@ -99,13 +99,13 @@ impl Sprite {
         self.spr.remove();
     }
 
-    /// System to draw all sprites to the screen. Calls [`playdate::sprite::draw_sprites`].
-    ///
-    /// If your draw calls are not showing up, order that system after this one.
-    #[inline]
-    pub fn draw_sprites() {
-        playdate::sprite::draw_sprites();
-    }
+    // /// System to draw all sprites to the screen. Calls [`playdate::sprite::draw_sprites`].
+    // ///
+    // /// If your draw calls are not showing up, order that system after this one.
+    // #[inline]
+    // pub fn draw_sprites() {
+    //     playdate::sprite::draw_sprites();
+    // }
 }
 
 impl Default for Sprite {

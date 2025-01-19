@@ -5,6 +5,7 @@ use bevy_ecs::prelude::*;
 use bevy_math::{Affine2, Affine3A};
 use bevy_transform::prelude::{GlobalTransform, Transform};
 use core::ops::Deref;
+use playdate::sprite::draw_sprites;
 
 pub struct ViewPlugin;
 
@@ -15,12 +16,12 @@ impl Plugin for ViewPlugin {
             view_system
                 .after(bevy_transform::systems::propagate_transforms)
                 .after(bevy_transform::systems::sync_simple_transforms)
-                .before(Sprite::draw_sprites),
+                .before(draw_sprites),
         );
     }
 }
 
-/// Add this marker component to an entity to set it as the
+/// Add this marker component to an entity to set it as the camera/center of the screen
 #[derive(Component, Copy, Clone, Eq, PartialEq)]
 #[require(Transform)]
 pub struct Camera;

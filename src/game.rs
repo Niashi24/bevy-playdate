@@ -1,38 +1,27 @@
-use crate::builder::builders::{arc, line};
 use crate::builder::{
-    CurveBuilder, Joint, JointConnection, MovingSplineDot, Segment, SegmentConnection,
+    Joint, MovingSplineDot, Segment,
 };
-use crate::draw_sprites_system;
-use alloc::rc::{Rc, Weak};
-use alloc::vec::Vec;
-use alloc::{format, vec};
+use alloc::format;
 use bevy_app::{App, PostUpdate, Update};
 use bevy_ecs::prelude::*;
 use bevy_ecs::schedule::ScheduleLabel;
 use bevy_math::Dir2;
-use bevy_playdate::dbg;
-use bevy_playdate::input::{CrankInput, InputPlugin};
+use bevy_playdate::input::CrankInput;
 use bevy_playdate::sprite::Sprite;
-use bevy_playdate::time::{Time, TimePlugin};
-use bevy_transform::prelude::{GlobalTransform, Transform};
-use core::cell::{LazyCell, RefCell};
-use core::cmp::Ordering;
-use core::f32::consts::{FRAC_PI_2, PI, TAU};
-use core::mem::swap;
-use curve::arc::ArcSegment;
-use curve::line::LineSegment;
+use bevy_playdate::time::Time;
+use bevy_transform::prelude::Transform;
 use curve::roots::{quadratic, SolutionIter};
-use curve::traits::{CurveSegment, CurveType};
+use curve::traits::CurveSegment;
 use glam::Vec2;
 use num_traits::float::{Float, TotalOrder};
 use pd::graphics::bitmap::LCDColorConst;
-use pd::graphics::color::Color;
 use pd::graphics::text::draw_text;
-use pd::graphics::Graphics;
+use pd::graphics::{draw_ellipse, draw_rect, Graphics};
+use pd::sprite::draw_sprites;
 use pd::sys::ffi::LCDColor;
 use playdate::system::System as PDSystem;
 use rand::SeedableRng;
-use smallvec::smallvec;
+use bevy_playdate::debug::in_debug;
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, ScheduleLabel)]
 pub struct AppUpdate;
@@ -46,7 +35,9 @@ pub fn register_systems(app: &mut App) {
         move_spline_dot,
     ).chain());
 
-    app.add_systems(PostUpdate, debug_dots.after(draw_sprites_system));
+    app.add_systems(PostUpdate, (debug_dots, debug_sprite_bounds)
+        .after(draw_sprites)
+        .run_if(in_debug));
 
     let t = PDSystem::Default().seconds_since_epoch();
     let mut r = rand_pcg::Pcg32::seed_from_u64(t as u64);
@@ -138,16 +129,28 @@ pub fn register_systems(app: &mut App) {
     //     .push(arc_curvature_length(200.0, -1.0 / 50.0))
     //     .build(&mut app.world_mut().commands(), 10);
 
-    // test_builder(&mut app.world_mut().commands());
-    // test_branch(&mut app.world_mut().commands());
+    crate::test_scenes::test_builder(&mut app.world_mut().commands());
+    crate::test_scenes::test_branch(&mut app.world_mut().commands());
     crate::test_scenes::test_3_way_curve(&mut app.world_mut().commands());
-    // test_circle(&mut app.world_mut().commands());
+    crate::test_scenes::test_circle(&mut app.world_mut().commands());
 
     // let test = Joint2::new
 
     // app.world_mut().spawn(())
 
     // schedule.run(world);
+}
+
+fn debug_sprite_bounds(
+    sprites: Query<&Sprite>,
+) {
+    for sprite in sprites.iter() {
+        let bounds = sprite.bounds();
+        draw_rect(bounds.x as i32, bounds.y as i32, bounds.width as i32, bounds.height as i32, LCDColor::BLACK);
+        let (x, y) = sprite.position();
+        draw_ellipse(x as i32 - 2, y as i32 - 2, 4, 4, 2, 0.0, 360.0, LCDColor::XOR);
+        // draw_rect(x as i32, y as i32, 5, 5, LCDColor::XOR);
+    }
 }
 
 fn rotate(v: Vec2, angle: f32) -> Vec2 {

@@ -52,6 +52,8 @@ pub struct Segment {
 impl Segment {
     pub fn to_sprite<T: Api>(&self, gfx: Graphics<T>, line_width: i32, color: LCDColor) -> Sprite {
         let (min, mut max) = self.curve.bounds();
+        dbg!(&self.curve);
+        dbg!(min, max);
         let start = self.curve.position(0.0);
         let s_t = if min.x != max.x {
             f32::inverse_lerp(
@@ -105,10 +107,13 @@ impl Segment {
                 if arc.start < arc.end {
                     swap(&mut end, &mut start);
                 }
-                // println!("{:?}", center);
+                let min = arc.bounds().0;
+                let top = arc.center - Vec2::splat(arc.radius);
+                let origin = top - min;
+                
                 gfx.draw_ellipse(
-                    0,
-                    0,
+                    origin.x as i32,
+                    origin.y as i32,
                     (arc.radius * 2.0) as i32 + line_width,
                     (arc.radius * 2.0) as i32 + line_width,
                     line_width,

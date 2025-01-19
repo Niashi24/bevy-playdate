@@ -6,6 +6,7 @@ pub mod jobs;
 pub mod sprite;
 pub mod time;
 pub mod view;
+pub mod event;
 
 extern crate alloc;
 
@@ -20,6 +21,7 @@ impl Plugin for DefaultPlugins {
             input::InputPlugin,
             sprite::SpritePlugin,
             time::TimePlugin,
+            debug::DebugPlugin,
             view::ViewPlugin,
             bevy_transform::TransformPlugin,
         ));

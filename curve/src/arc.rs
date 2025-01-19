@@ -36,6 +36,11 @@ impl ArcSegment {
             radius,
         }
     }
+    
+    pub fn eval_angle(&self, angle: f32) -> Vec2 {
+        let (sin, cos) = f32::sin_cos(angle);
+        Vec2::new(cos, -sin) * self.radius + self.center
+    }
 }
 
 impl CurveSegment for ArcSegment {
@@ -45,8 +50,7 @@ impl CurveSegment for ArcSegment {
 
     fn position(&self, t: f32) -> Vec2 {
         let angle = f32::lerp(self.start, self.end, t);
-        let (sin, cos) = f32::sin_cos(angle);
-        Vec2::new(cos, -sin) * self.radius + self.center
+        self.eval_angle(angle)
     }
 
     fn dir(&self, t: f32) -> Dir2 {
@@ -74,12 +78,54 @@ impl CurveSegment for ArcSegment {
     // }
 
     fn bounds(&self) -> (Vec2, Vec2) {
-        // TODO: Replace with more optimized bounds
-        (
-            self.center - Vec2::splat(self.radius),
-            self.center + Vec2::splat(self.radius),
-        )
+        // start
+        let mut min = self.eval_angle(self.start);
+        let mut max = min;
+
+        // end
+        {
+            let end = self.eval_angle(self.end);
+            min.x = min.x.min(end.x);
+            min.y = min.y.min(end.y);
+            max.x = max.x.max(end.x);
+            max.y = max.y.max(end.y);
+        }
+        
+        const CRITICAL_POINTS: [f32; 4] = [
+            0.0,
+            core::f32::consts::FRAC_PI_2,
+            core::f32::consts::PI,
+            3.0 * core::f32::consts::FRAC_PI_2,
+        ];
+        
+        for angle in CRITICAL_POINTS {
+            if !angle_in_range(angle, self.start, self.end) {
+                continue;
+            }
+            
+            let pos = self.eval_angle(angle);
+
+            min.x = min.x.min(pos.x);
+            min.y = min.y.min(pos.y);
+            max.x = max.x.max(pos.x);
+            max.y = max.y.max(pos.y);
+        }
+
+        (min, max)
+        
+        // (
+        //     self.center - Vec2::splat(self.radius),
+        //     self.center + Vec2::splat(self.radius),
+        // )
     }
+}
+
+fn angle_in_range(a: f32, start: f32, end: f32) -> bool {
+    let (lower, upper) = (start.min(end), start.max(end));
+    use core::f32::consts::TAU as TAU;
+    // if end == TAU, we don't want it to be rounded
+    let tau = TAU + 1e-6;
+    (a - lower) % tau <= (upper - lower) % tau
 }
 
 #[cfg(test)]
