@@ -1,4 +1,4 @@
-use crate::builder::{
+use crate::curve::{
     Joint, MovingSplineDot, Segment,
 };
 use alloc::format;

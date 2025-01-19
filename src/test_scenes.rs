@@ -1,22 +1,22 @@
-﻿use alloc::vec;
+﻿use crate::builder::builders::{arc, line};
+use crate::builder::CurveBuilder;
+use crate::curve::{Joint, JointConnection, MovingSplineDot, Segment, SegmentConnection};
 use alloc::vec::Vec;
-use core::cell::LazyCell;
-use core::f32::consts::{FRAC_PI_2, PI, TAU};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::name::Name;
 use bevy_ecs::prelude::Commands;
+use bevy_playdate::sprite::Sprite;
 use bevy_transform::components::Transform;
+use core::cell::LazyCell;
+use core::f32::consts::{FRAC_PI_2, PI, TAU};
+use curve::arc::ArcSegment;
+use curve::line::LineSegment;
+use curve::traits::CurveType;
 use glam::Vec2;
 use pd::graphics::bitmap::Color;
 use pd::graphics::color::LCDColorConst;
 use pd::sys::ffi::LCDColor;
 use smallvec::smallvec;
-use bevy_playdate::sprite::Sprite;
-use curve::arc::ArcSegment;
-use curve::line::LineSegment;
-use curve::traits::CurveType;
-use crate::builder::builders::{arc, line};
-use crate::builder::{CurveBuilder, Joint, JointConnection, MovingSplineDot, Segment, SegmentConnection};
 
 pub fn test_builder(commands: &mut Commands) {
     let (segments, joints) = CurveBuilder::new(Vec2::new(168.0, 20.0), Vec2::X)
