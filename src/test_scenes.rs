@@ -30,14 +30,10 @@ pub fn test_builder(commands: &mut Commands) {
         .push(line(50.0))
         .build(commands, 4, true);
 
-    let mut sprite = Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
-        gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
-    });
-
     commands.spawn_batch((0..1).into_iter().map(move |i| {
         (
             Name::new("Dot"),
-            sprite.clone(),
+            CIRCLE.clone(),
             MovingSplineDot {
                 t: i as f32 * 0.1,
                 v: 0.5,
@@ -369,9 +365,7 @@ pub fn test_3_way_curve(commands: &mut Commands) {
         ],
     });
 
-    let mut sprite = Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
-        gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
-    });
+    let mut sprite = CIRCLE.clone();
 
     sprite.set_z_index(10);
 
