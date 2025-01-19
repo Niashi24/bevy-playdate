@@ -105,7 +105,7 @@ pub fn test_branch(commands: &mut Commands) {
     );
 
     commands.entity(joints[0]).insert(Joint {
-        connections: vec![JointConnection {
+        connections: smallvec![JointConnection {
             segments: smallvec![SegmentConnection {
                 id: segments[0],
                 t: 0.0,
@@ -114,7 +114,7 @@ pub fn test_branch(commands: &mut Commands) {
     });
 
     commands.entity(joints[1]).insert(Joint {
-        connections: vec![JointConnection {
+        connections: smallvec![JointConnection {
             segments: smallvec![SegmentConnection {
                 id: segments[1],
                 t: 0.0,
@@ -123,7 +123,7 @@ pub fn test_branch(commands: &mut Commands) {
     });
 
     commands.entity(joints[2]).insert(Joint {
-        connections: vec![JointConnection {
+        connections: smallvec![JointConnection {
             segments: smallvec![SegmentConnection {
                 id: segments[2],
                 t: 1.0,
@@ -132,7 +132,7 @@ pub fn test_branch(commands: &mut Commands) {
     });
 
     commands.entity(joints[3]).insert(Joint {
-        connections: vec![
+        connections: smallvec![
             JointConnection {
                 segments: smallvec![SegmentConnection {
                     id: segments[0],
@@ -271,7 +271,7 @@ pub fn test_3_way_curve(commands: &mut Commands) {
     );
 
     commands.entity(top_single_joint).insert(Joint {
-        connections: vec![JointConnection {
+        connections: smallvec![JointConnection {
             segments: smallvec![SegmentConnection {
                 id: top_segment,
                 t: 0.0,
@@ -280,7 +280,7 @@ pub fn test_3_way_curve(commands: &mut Commands) {
     });
 
     commands.entity(left_single_joint).insert(Joint {
-        connections: vec![JointConnection {
+        connections: smallvec![JointConnection {
             segments: smallvec![SegmentConnection {
                 id: left_segment,
                 t: 0.0,
@@ -289,7 +289,7 @@ pub fn test_3_way_curve(commands: &mut Commands) {
     });
 
     commands.entity(right_single_joint).insert(Joint {
-        connections: vec![JointConnection {
+        connections: smallvec![JointConnection {
             segments: smallvec![SegmentConnection {
                 id: right_segment,
                 t: 0.0,
@@ -298,7 +298,7 @@ pub fn test_3_way_curve(commands: &mut Commands) {
     });
 
     commands.entity(top_multi_joint).insert(Joint {
-        connections: vec![
+        connections: smallvec![
             JointConnection {
                 segments: smallvec![SegmentConnection {
                     id: top_segment,
@@ -321,7 +321,7 @@ pub fn test_3_way_curve(commands: &mut Commands) {
     });
 
     commands.entity(left_multi_joint).insert(Joint {
-        connections: vec![
+        connections: smallvec![
             JointConnection {
                 segments: smallvec![SegmentConnection {
                     id: left_segment,
@@ -344,7 +344,7 @@ pub fn test_3_way_curve(commands: &mut Commands) {
     });
 
     commands.entity(right_multi_joint).insert(Joint {
-        connections: vec![
+        connections: smallvec![
             JointConnection {
                 segments: smallvec![SegmentConnection {
                     id: right_segment,
@@ -413,7 +413,7 @@ pub fn test_circle(commands: &mut Commands) {
     commands
         .entity(joint)
         .insert(Joint {
-            connections: vec![
+            connections: smallvec![
                 JointConnection {
                     segments: smallvec![SegmentConnection {
                         id: circle_segment,

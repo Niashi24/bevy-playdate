@@ -163,11 +163,11 @@ impl JointEnter {
 
 #[derive(Clone, PartialEq, Debug, Component)]
 pub struct Joint {
-    pub connections: Vec<JointConnection>,
+    pub connections: SmallVec<[JointConnection; 2]>,
 }
 
 impl Joint {
-    pub fn new(connections: Vec<JointConnection>) -> Self {
+    pub fn new(connections: SmallVec<[JointConnection; 2]>) -> Self {
         Joint {
             connections,
             // space,
@@ -476,7 +476,7 @@ impl CurveBuilder {
 
         for i in 1..self.segments.len() {
             commands.entity(joint_entities[i]).insert(Joint {
-                connections: vec![
+                connections: smallvec![
                     JointConnection {
                         segments: smallvec![SegmentConnection {
                             id: seg_entities[i - 1],
@@ -495,7 +495,7 @@ impl CurveBuilder {
 
         if join_ends {
             commands.entity(joint_entities[0]).insert(Joint {
-                connections: vec![
+                connections: smallvec![
                     JointConnection {
                         segments: smallvec![SegmentConnection {
                             id: seg_entities[0],
@@ -512,7 +512,7 @@ impl CurveBuilder {
             });
         } else {
             commands.entity(joint_entities[0]).insert(Joint {
-                connections: vec![JointConnection {
+                connections: smallvec![JointConnection {
                     segments: smallvec![SegmentConnection {
                         id: seg_entities[0],
                         t: 0.0,
@@ -523,7 +523,7 @@ impl CurveBuilder {
             commands
                 .entity(*joint_entities.last().unwrap())
                 .insert(Joint {
-                    connections: vec![JointConnection {
+                    connections: smallvec![JointConnection {
                         segments: smallvec![SegmentConnection {
                             id: *seg_entities.last().unwrap(),
                             t: 1.0,
