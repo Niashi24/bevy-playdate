@@ -1,6 +1,7 @@
 ﻿use crate::builder::builders::{arc, line};
 use crate::builder::CurveBuilder;
-use crate::curve::{Joint, JointConnection, MovingSplineDot, Segment, SegmentConnection};
+use crate::curve::{Joint, JointConnection, Segment, SegmentConnection};
+use crate::game::MovingSplineDot;
 use alloc::vec::Vec;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::name::Name;

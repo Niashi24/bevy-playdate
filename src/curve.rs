@@ -16,13 +16,6 @@ use smallvec::SmallVec;
 use bevy_playdate::sprite::Sprite;
 use curve::traits::{CurveSegment, CurveType};
 
-#[derive(Component, Debug, PartialEq, Copy, Clone)]
-pub struct MovingSplineDot {
-    pub t: f32,
-    pub v: f32,
-    pub spline_entity: Entity,
-}
-
 #[derive(Component, Clone, PartialEq, Debug)]
 pub struct Segment {
     /// The actual curve on the segment

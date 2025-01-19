@@ -1,5 +1,5 @@
 use crate::curve::{
-    Joint, MovingSplineDot, Segment,
+    Joint, Segment,
 };
 use alloc::format;
 use bevy_app::{App, PostUpdate, Update};
@@ -139,6 +139,13 @@ pub fn register_systems(app: &mut App) {
     // app.world_mut().spawn(())
 
     // schedule.run(world);
+}
+
+#[derive(Component, Debug, PartialEq, Copy, Clone)]
+pub struct MovingSplineDot {
+    pub t: f32,
+    pub v: f32,
+    pub spline_entity: Entity,
 }
 
 fn debug_sprite_bounds(
