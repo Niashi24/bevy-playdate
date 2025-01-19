@@ -162,13 +162,13 @@ impl JointEnter {
 }
 
 #[derive(Clone, PartialEq, Debug, Component)]
-pub struct Joint2 {
+pub struct Joint {
     pub connections: Vec<JointConnection>,
 }
 
-impl Joint2 {
+impl Joint {
     pub fn new(connections: Vec<JointConnection>) -> Self {
-        Joint2 {
+        Joint {
             connections,
             // space,
         }
@@ -475,7 +475,7 @@ impl CurveBuilder {
         // Spawn joints
 
         for i in 1..self.segments.len() {
-            commands.entity(joint_entities[i]).insert(Joint2 {
+            commands.entity(joint_entities[i]).insert(Joint {
                 connections: vec![
                     JointConnection {
                         segments: smallvec![SegmentConnection {
@@ -494,7 +494,7 @@ impl CurveBuilder {
         }
 
         if join_ends {
-            commands.entity(joint_entities[0]).insert(Joint2 {
+            commands.entity(joint_entities[0]).insert(Joint {
                 connections: vec![
                     JointConnection {
                         segments: smallvec![SegmentConnection {
@@ -511,7 +511,7 @@ impl CurveBuilder {
                 ],
             });
         } else {
-            commands.entity(joint_entities[0]).insert(Joint2 {
+            commands.entity(joint_entities[0]).insert(Joint {
                 connections: vec![JointConnection {
                     segments: smallvec![SegmentConnection {
                         id: seg_entities[0],
@@ -522,7 +522,7 @@ impl CurveBuilder {
 
             commands
                 .entity(*joint_entities.last().unwrap())
-                .insert(Joint2 {
+                .insert(Joint {
                     connections: vec![JointConnection {
                         segments: smallvec![SegmentConnection {
                             id: *seg_entities.last().unwrap(),
