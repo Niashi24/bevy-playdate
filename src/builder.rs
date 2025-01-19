@@ -52,8 +52,7 @@ pub struct Segment {
 impl Segment {
     pub fn to_sprite<T: Api>(&self, gfx: Graphics<T>, line_width: i32, color: LCDColor) -> Sprite {
         let (min, mut max) = self.curve.bounds();
-        dbg!(&self.curve);
-        dbg!(min, max);
+        
         let start = self.curve.position(0.0);
         let s_t = if min.x != max.x {
             f32::inverse_lerp(
@@ -385,15 +384,15 @@ impl CurveBuilder {
     pub fn push(mut self, builder: impl SectionBuilder) -> Self {
         let segment = builder.add_segment(&mut self.cur_pos, &mut self.cur_dir);
 
-        println!("{:?}", segment);
-
-        println!(
-            "start: {:.2?} w/ {:.2?}, end: {:.2?} w/ {:.2?}",
-            segment.position(0.0),
-            segment.dir(0.0),
-            segment.position(1.0),
-            segment.dir(1.0)
-        );
+        // println!("{:?}", segment);
+        // 
+        // println!(
+        //     "start: {:.2?} w/ {:.2?}, end: {:.2?} w/ {:.2?}",
+        //     segment.position(0.0),
+        //     segment.dir(0.0),
+        //     segment.position(1.0),
+        //     segment.dir(1.0)
+        // );
 
         let len = segment.length();
 
