@@ -14,10 +14,11 @@ use bevy_playdate::dbg;
 use bevy_playdate::input::{CrankInput, InputPlugin};
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::{Time, TimePlugin};
-use bevy_transform::prelude::Transform;
+use bevy_transform::prelude::{GlobalTransform, Transform};
 use core::cell::{LazyCell, RefCell};
 use core::cmp::Ordering;
 use core::f32::consts::{FRAC_PI_2, PI, TAU};
+use core::mem::swap;
 use curve::arc::ArcSegment;
 use curve::line::LineSegment;
 use curve::roots::{quadratic, SolutionIter};
@@ -41,7 +42,9 @@ pub fn register_systems(app: &mut App) {
 
     app.insert_non_send_resource(Graphics::Cached());
 
-    app.add_systems(Update, (move_spline_dot).chain());
+    app.add_systems(Update, (
+        move_spline_dot,
+    ).chain());
 
     app.add_systems(PostUpdate, debug_dots.after(draw_sprites_system));
 
@@ -137,8 +140,8 @@ pub fn register_systems(app: &mut App) {
 
     // test_builder(&mut app.world_mut().commands());
     // test_branch(&mut app.world_mut().commands());
-    // test_3_way_curve(&mut app.world_mut().commands());
-    test_circle(&mut app.world_mut().commands());
+    test_3_way_curve(&mut app.world_mut().commands());
+    // test_circle(&mut app.world_mut().commands());
 
     // let test = Joint2::new
 
@@ -289,6 +292,7 @@ fn test_branch(commands: &mut Commands) {
 
     commands.spawn((
         sprite,
+        Transform::default(),
         MovingSplineDot {
             t: 0.5,
             v: 0.0,
@@ -313,7 +317,7 @@ fn test_3_way_curve(commands: &mut Commands) {
     let right_multi_joint = commands.spawn_empty().id();
 
     let top_left = Vec2::new(100.0, 50.0);
-    let line_width = 20;
+    let line_width = 3;
     let scale = 50.0;
 
     commands.entity(top_segment).insert(
@@ -495,7 +499,7 @@ fn test_3_way_curve(commands: &mut Commands) {
     });
 
     let mut sprite = Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
-        gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::XOR);
+        gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
     });
 
     sprite.set_z_index(10);
@@ -503,6 +507,7 @@ fn test_3_way_curve(commands: &mut Commands) {
     commands.spawn_batch((0..10).into_iter().map(move |i| {
         (
             sprite.clone(),
+            Transform::default(),
             MovingSplineDot {
                 t: i as f32 * 0.1,
                 v: 0.0,

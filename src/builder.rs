@@ -37,12 +37,6 @@ pub enum DotAttach {
     None,
 }
 
-pub struct MovingSplineDot2 {
-    pub t: f32,
-    pub v: f32,
-    pub current_segment: Option<Entity>,
-}
-
 #[derive(Component, Clone, PartialEq, Debug)]
 pub struct Segment {
     /// The actual curve on the segment
@@ -363,10 +357,6 @@ struct ContinueJoint {
 struct Curve {
     pub total_length: f32,
     pub segments: Vec<Entity>,
-}
-
-impl MovingSplineDot2 {
-    pub fn advance(&mut self) {}
 }
 
 pub struct CurveBuilder {
