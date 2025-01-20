@@ -6,6 +6,7 @@ use bevy_ecs::prelude::{Bundle, Commands};
 use bevy_ecs::query::{QueryData, QueryFilter};
 use core::fmt::Debug;
 use bevy_ecs::name::Name;
+use bevy_transform::prelude::Transform;
 use curve::arc::ArcSegment;
 use curve::line::LineSegment;
 use curve::traits::{CurveSegment, CurveType};
@@ -108,7 +109,7 @@ impl CurveBuilder {
             return Default::default();
         }
         // TODO when bevy_hierarchy ports, make children
-        let parent = commands.spawn_empty().id();
+        let parent = commands.spawn(Transform::default()).id();
 
         let seg_entities: Vec<Entity> = (0..self.segments.len())
             .map(|_| commands.spawn(Name::new("Segment")).id())
@@ -116,6 +117,8 @@ impl CurveBuilder {
         let joint_entities: Vec<Entity> = (0..self.segments.len() + if join_ends { 0 } else { 1 })
             .map(|_| commands.spawn(Name::new("Joint")).id())
             .collect();
+        
+        commands.entity(parent).add_children(&seg_entities).add_children(&joint_entities);
 
         // Spawn joints
 
@@ -183,7 +186,6 @@ impl CurveBuilder {
         for i in 0..seg_entities.len() {
             let segment = Segment {
                 curve: segments.next().unwrap().segment,
-                parent,
                 start_joint: joint_entities[i],
                 end_joint: joint_entities[(i + 1) % joint_entities.len()],
             };

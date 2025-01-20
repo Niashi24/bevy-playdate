@@ -69,7 +69,6 @@ pub fn test_branch(commands: &mut Commands) {
                     start: Vec2::new(20.0, 20.0),
                     end: Vec2::new(100.0, 100.0),
                 }),
-                parent: Entity::PLACEHOLDER,
                 start_joint: joints[0],
                 end_joint: joints[3],
             }
@@ -85,7 +84,6 @@ pub fn test_branch(commands: &mut Commands) {
                 start: Vec2::new(20.0, 180.0),
                 end: Vec2::new(100.0, 100.0),
             }),
-            parent: Entity::PLACEHOLDER,
             start_joint: joints[1],
             end_joint: joints[3],
         }
@@ -99,7 +97,6 @@ pub fn test_branch(commands: &mut Commands) {
                 start: Vec2::new(100.0, 100.0),
                 end: Vec2::new(200.0, 100.0),
             }),
-            parent: Entity::PLACEHOLDER,
             start_joint: joints[3],
             end_joint: joints[2],
         }
@@ -193,7 +190,6 @@ pub fn test_3_way_curve(commands: &mut Commands) {
                 start: top_left + Vec2::new(scale * 2.0, 0.0),
                 end: top_left + Vec2::new(scale * 2.0, scale),
             }),
-            parent: Entity::PLACEHOLDER,
             start_joint: top_single_joint,
             end_joint: top_multi_joint,
         }
@@ -206,7 +202,6 @@ pub fn test_3_way_curve(commands: &mut Commands) {
                 start: top_left + Vec2::new(0.0, scale * 2.0),
                 end: top_left + Vec2::new(scale, scale * 2.0),
             }),
-            parent: Entity::PLACEHOLDER,
             start_joint: left_single_joint,
             end_joint: left_multi_joint,
         }
@@ -219,7 +214,6 @@ pub fn test_3_way_curve(commands: &mut Commands) {
                 start: top_left + Vec2::new(scale * 4.0, scale * 2.0),
                 end: top_left + Vec2::new(scale * 3.0, scale * 2.0),
             }),
-            parent: Entity::PLACEHOLDER,
             start_joint: right_single_joint,
             end_joint: right_multi_joint,
         }
@@ -234,7 +228,6 @@ pub fn test_3_way_curve(commands: &mut Commands) {
                 end: 0.0,
                 radius: scale,
             }),
-            parent: Entity::PLACEHOLDER,
             start_joint: left_multi_joint,
             end_joint: top_multi_joint,
         }
@@ -249,7 +242,6 @@ pub fn test_3_way_curve(commands: &mut Commands) {
                 end: -PI,
                 radius: scale,
             }),
-            parent: Entity::PLACEHOLDER,
             start_joint: right_multi_joint,
             end_joint: top_multi_joint,
         }
@@ -262,7 +254,6 @@ pub fn test_3_way_curve(commands: &mut Commands) {
                 start: top_left + Vec2::new(scale, scale * 2.0),
                 end: top_left + Vec2::new(scale * 3.0, scale * 2.0),
             }),
-            parent: Entity::PLACEHOLDER,
             start_joint: left_multi_joint,
             end_joint: right_multi_joint,
         }
@@ -400,7 +391,6 @@ pub fn test_circle(commands: &mut Commands) {
                     end: TAU,
                     radius,
                 }),
-                parent: Entity::PLACEHOLDER,
                 start_joint: joint,
                 end_joint: joint,
             }

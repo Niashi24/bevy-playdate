@@ -6,10 +6,13 @@ use bevy_ecs::bundle::Bundle;
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::Query;
+use bevy_ecs::query::QueryData;
 use bevy_math::{Dir2, Rot2};
 use bevy_reflect::Reflect;
 use bevy_ecs::reflect::ReflectComponent;
-use glam::{FloatExt, Vec2};
+use bevy_transform::components::GlobalTransform;
+use bevy_transform::prelude::Transform;
+use glam::{FloatExt, Vec2, Vec3Swizzles};
 use pd::graphics::api::Api;
 use pd::graphics::bitmap::{Bitmap, Color};
 use pd::graphics::{BitmapFlip, Graphics};
@@ -34,8 +37,6 @@ impl Plugin for CurvePlugin {
 pub struct Segment {
     /// The actual curve on the segment
     pub curve: CurveType,
-    /// parent curve
-    pub parent: Entity,
     /// joint at t = 0
     pub start_joint: Entity,
     /// joint at t = 1
@@ -135,7 +136,9 @@ impl Segment {
 
     pub fn to_bundle(self, line_width: i32) -> impl Bundle {
         let sprite = self.to_sprite(Graphics::Cached(), line_width, LCDColor::BLACK);
-        (self, sprite)
+        let position = self.curve.position(0.0);
+        let transform = Transform::from_translation(position.extend(0.0));
+        (self, sprite, transform)
     }
 }
 
@@ -162,7 +165,7 @@ impl Joint {
         mut gravity_dir: Dir2,
         enter_segment_entity: Entity,
         t_enter: f32,
-        q_segment: &Query<&Segment>,
+        q_segment: &Query<CurveQuery>,
     ) -> EnterJointResult {
         let gravity_dir = Vec2::new(gravity_dir.x, -gravity_dir.y);
 
@@ -174,8 +177,8 @@ impl Joint {
             };
         }
 
-        let enter_segment = q_segment.get(enter_segment_entity).unwrap();
-        let enter_vel = enter_segment.curve.dir(t_enter) * v.signum();
+        let enter_curve = q_segment.get(enter_segment_entity).unwrap();
+        let enter_vel = enter_curve.curve().dir(t_enter) * v.signum();
 
         let mut best_in_front = None;
         let mut best_any = None;
@@ -190,7 +193,7 @@ impl Joint {
                 continue;
             }
             let segment = q_segment.get(connection.segments[0].id).unwrap();
-            let dir = segment.curve.dir(connection.segments[0].t);
+            let dir = segment.curve().dir(connection.segments[0].t);
             let target_dot = gravity_dir.dot(dir.into());
             // if new direction in same direction
             // => angle between <= 90 degrees
@@ -224,7 +227,7 @@ impl Joint {
         let next_dir = q_segment
             .get(next.segments[0].id)
             .unwrap()
-            .curve
+            .curve()
             .dir(next.segments[0].t);
 
         let normalized = Rot2::from_sin_cos(next_dir.y, next_dir.x).inverse() * gravity_dir;
@@ -232,7 +235,7 @@ impl Joint {
 
         // Our joint's directions are all in the same direction,
         // but might be flipped, so let's use the real one
-        let next_dir = q_segment.get(next_id.id).unwrap().curve.dir(next_id.t);
+        let next_dir = q_segment.get(next_id.id).unwrap().curve().dir(next_id.t);
         let dot = next_dir.dot(enter_vel);
 
         EnterJointResult {
@@ -299,4 +302,20 @@ pub struct EnterJointResult {
     pub next: Entity,
     pub t: f32,
     pub v: f32,
+}
+
+#[derive(Copy, Clone, QueryData)]
+pub struct CurveQuery {
+    pub segment: &'static Segment,
+    pub global_transform: &'static GlobalTransform,
+}
+
+impl CurveQueryItem<'_> {
+    pub fn curve(&self) -> &CurveType {
+        &self.segment.curve
+    }
+    
+    pub fn position(&self, t: f32) -> Vec2 {
+        self.curve().position(t) + self.global_transform.translation().xy()
+    }
 }

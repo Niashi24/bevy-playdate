@@ -1,6 +1,4 @@
-use crate::curve::{
-    Joint, Segment,
-};
+use crate::curve::{CurveQuery, Joint, Segment};
 use alloc::format;
 use bevy_app::{App, PostUpdate, Update};
 use bevy_ecs::prelude::*;
@@ -168,7 +166,7 @@ fn rotate(v: Vec2, angle: f32) -> Vec2 {
 
 fn move_spline_dot(
     mut dots: Query<(&mut MovingSplineDot, &mut Transform)>,
-    q_segments: Query<&Segment>,
+    q_segments: Query<CurveQuery>,
     q_joints: Query<&Joint>,
     crank: Res<CrankInput>,
     time: Res<Time>,
@@ -189,7 +187,7 @@ fn move_spline_dot(
         let new_pos = q_segments
             .get(dot.spline_entity)
             .unwrap()
-            .curve
+            .curve()
             .position(dot.t);
 
         transform.translation = new_pos.extend(0.0);
@@ -207,7 +205,7 @@ fn move_dot_recursive(
     t_remaining: f32,
     depth: usize,
     gravity: Vec2,
-    q_segments: &Query<&Segment>,
+    q_segments: &Query<CurveQuery>,
     q_joints: &Query<&Joint>,
 ) {
     if depth > 10 {
@@ -218,10 +216,11 @@ fn move_dot_recursive(
         return;
     }
 
-    let segment = q_segments.get(dot.spline_entity).unwrap();
-    let length = segment.curve.length();
+    let curve = q_segments.get(dot.spline_entity).unwrap();
+    let segment = curve.segment;
+    let length = curve.curve().length();
 
-    let dir = segment.curve.dir(dot.t);
+    let dir = curve.curve().dir(dot.t);
     let g = gravity.dot(dir.into());
     if g == 0.0 && dot.v == 0.0 {
         return;
@@ -235,7 +234,7 @@ fn move_dot_recursive(
         new_joint: Entity,
         old_t: f32,
         gravity: Vec2,
-        q_segments: &Query<&Segment>,
+        q_segments: &Query<CurveQuery>,
         q_joints: &Query<&Joint>,
     ) {
         let joint = q_joints.get(new_joint).unwrap();
@@ -244,7 +243,7 @@ fn move_dot_recursive(
             Dir2::new(gravity).unwrap(),
             dot.spline_entity,
             old_t,
-            &q_segments,
+            q_segments,
         );
 
         dot.t = result.t;
@@ -321,11 +320,11 @@ fn move_dot_recursive(
 fn move_dot_2(
     dot: &mut MovingSplineDot,
     gravity: Vec2,
-    q_segments: &Query<&Segment>,
+    q_segments: &Query<CurveQuery>,
     q_joints: &Query<&Joint>,
     time: f32,
 ) {
-    let segment = q_segments.get(dot.spline_entity).unwrap();
+    let segment = q_segments.get(dot.spline_entity).unwrap().segment;
     let length = segment.curve.length();
 
     let dir = segment.curve.dir(dot.t);
@@ -349,7 +348,7 @@ fn move_dot_2(
             Dir2::new(gravity).unwrap(),
             dot.spline_entity,
             1.0,
-            &q_segments,
+            q_segments,
         );
 
         dot.t = result.t;
