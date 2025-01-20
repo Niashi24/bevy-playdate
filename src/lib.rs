@@ -35,7 +35,7 @@ impl State {
     fn new() -> Self {
         let mut app = App::new();
         app.add_plugins(DefaultPlugins)
-            .add_plugins(game::register_systems)
+            .add_plugins(game::GamePlugin)
             .add_plugins(ui_test::ui_plugin);
 
         Self { app }

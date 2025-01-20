@@ -109,7 +109,7 @@ impl CurveBuilder {
             return Default::default();
         }
         // TODO when bevy_hierarchy ports, make children
-        let parent = commands.spawn(Transform::default()).id();
+        let parent = commands.spawn((Transform::default(), CurveParent)).id();
 
         let seg_entities: Vec<Entity> = (0..self.segments.len())
             .map(|_| commands.spawn(Name::new("Segment")).id())
@@ -198,6 +198,9 @@ impl CurveBuilder {
         (seg_entities, joint_entities)
     }
 }
+
+#[derive(Copy, Clone, Debug, Default, Component)]
+pub struct CurveParent;
 
 pub trait SectionBuilder {
     /// takes in previous
