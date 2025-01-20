@@ -21,9 +21,6 @@ use playdate::system::System as PDSystem;
 use rand::SeedableRng;
 use bevy_playdate::debug::in_debug;
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug, ScheduleLabel)]
-pub struct AppUpdate;
-
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
