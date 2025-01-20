@@ -10,7 +10,7 @@ use bevy_playdate::time::Time;
 use bevy_transform::prelude::Transform;
 use curve::roots::{quadratic, SolutionIter};
 use curve::traits::CurveSegment;
-use glam::Vec2;
+use glam::{Vec2, Vec3};
 use num_traits::float::{Float, TotalOrder};
 use pd::graphics::bitmap::LCDColorConst;
 use pd::graphics::text::draw_text;
@@ -20,6 +20,7 @@ use pd::sys::ffi::LCDColor;
 use playdate::system::System as PDSystem;
 use rand::SeedableRng;
 use bevy_playdate::debug::in_debug;
+use crate::builder::CurveParent;
 
 pub struct GamePlugin;
 
@@ -30,6 +31,7 @@ impl Plugin for GamePlugin {
 
         app.add_systems(Update, (
             move_spline_dot,
+            test_move,
         ).chain());
 
         app.add_systems(PostUpdate, (debug_dots, debug_sprite_bounds)
@@ -45,6 +47,17 @@ fn test_scenes(mut commands: Commands) {
     crate::test_scenes::test_branch(&mut commands);
     crate::test_scenes::test_3_way_curve(&mut commands);
     crate::test_scenes::test_circle(&mut commands);
+}
+
+fn test_move(
+    mut q_curve: Query<&mut Transform, With<CurveParent>>,
+    time: Res<Time>,
+) {
+    for mut t in q_curve.iter_mut() {
+        let (y, x) = time.elapsed_secs().sin_cos();
+        
+        t.translation = Vec3::new(x * 100.0, y * 100.0, 0.0);
+    }
 }
 
 #[derive(Component, Debug, PartialEq, Copy, Clone)]
@@ -83,7 +96,7 @@ fn move_spline_dot(
     for (mut dot, mut transform) in &mut dots {
         move_dot_recursive(
             dot.as_mut(),
-            time.delta_seconds(),
+            time.delta_secs(),
             0,
             gravity,
             &q_segments,
@@ -94,6 +107,8 @@ fn move_spline_dot(
         let new_pos = q_segments
             .get(dot.spline_entity)
             .unwrap()
+            // comment below line to use global transform instead of absolute position
+            // left for now because things break (change pls)
             .curve()
             .position(dot.t);
 
