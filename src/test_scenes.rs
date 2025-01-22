@@ -434,6 +434,7 @@ pub fn test_circle(commands: &mut Commands) {
 
 pub const CIRCLE: LazyCell<Sprite> = LazyCell::new(|| {
     Sprite::new_from_draw(10, 10, Color::CLEAR, |gfx| {
-        gfx.draw_ellipse(0, 0, 10, 10, 4, 0.0, 0.0, LCDColor::BLACK);
+        gfx.draw_ellipse(0, 0, 10, 10, 5, 0.0, 0.0, LCDColor::BLACK);
+        gfx.draw_ellipse(0, 0, 10, 10, 1, 0.0, 0.0, LCDColor::WHITE);
     })
 });

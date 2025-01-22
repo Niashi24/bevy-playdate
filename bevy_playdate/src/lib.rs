@@ -7,6 +7,8 @@ pub mod sprite;
 pub mod time;
 pub mod view;
 pub mod event;
+pub mod angle;
+mod utils;
 
 extern crate alloc;
 

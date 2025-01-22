@@ -1,6 +1,7 @@
 ﻿use bevy_app::{App, Plugin, PreUpdate};
 use bevy_ecs::schedule::{IntoSystemConfigs, SystemSet};
-use bevy_ecs::system::{NonSend, ResMut, Resource};
+use bevy_ecs::system::{NonSend, ResMut};
+use bevy_ecs::resource::Resource;
 use bevy_reflect::prelude::{Reflect, ReflectDefault};
 use bevy_ecs::reflect::ReflectResource;
 use playdate::controls::api::Cache;

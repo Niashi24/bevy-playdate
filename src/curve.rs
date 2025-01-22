@@ -19,7 +19,7 @@ use pd::graphics::{BitmapFlip, Graphics};
 use pd::graphics::color::LCDColorConst;
 use pd::sys::ffi::LCDColor;
 use smallvec::SmallVec;
-use bevy_playdate::sprite::Sprite;
+use bevy_playdate::sprite::{Sprite, SpriteRotation};
 use curve::traits::{CurveSegment, CurveType};
 
 pub struct CurvePlugin;
@@ -136,9 +136,10 @@ impl Segment {
 
     pub fn to_bundle(self, line_width: i32) -> impl Bundle {
         let sprite = self.to_sprite(Graphics::Cached(), line_width, LCDColor::BLACK);
+        let cache = SpriteRotation::cached(&sprite, 128);
         let position = self.curve.position(0.0);
         let transform = Transform::from_translation(position.extend(0.0));
-        (self, sprite, transform)
+        (self, sprite, cache, transform)
     }
 }
 

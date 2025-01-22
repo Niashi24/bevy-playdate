@@ -1,9 +1,10 @@
-use crate::curve::{CurveQuery, Joint, Segment};
+use crate::builder::CurveParent;
+use crate::curve::{CurveQuery, Joint};
 use alloc::format;
 use bevy_app::{App, Plugin, PostUpdate, Startup, Update};
 use bevy_ecs::prelude::*;
-use bevy_ecs::schedule::ScheduleLabel;
 use bevy_math::Dir2;
+use bevy_playdate::debug::in_debug;
 use bevy_playdate::input::CrankInput;
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::Time;
@@ -17,10 +18,7 @@ use pd::graphics::text::draw_text;
 use pd::graphics::{draw_ellipse, draw_rect, Graphics};
 use pd::sprite::draw_sprites;
 use pd::sys::ffi::LCDColor;
-use playdate::system::System as PDSystem;
-use rand::SeedableRng;
-use bevy_playdate::debug::in_debug;
-use crate::builder::CurveParent;
+use bevy_playdate::view::Camera;
 
 pub struct GamePlugin;
 
@@ -43,6 +41,10 @@ impl Plugin for GamePlugin {
 }
 
 fn test_scenes(mut commands: Commands) {
+    commands.spawn((
+        Camera,
+    ));
+    
     crate::test_scenes::test_builder(&mut commands);
     crate::test_scenes::test_branch(&mut commands);
     crate::test_scenes::test_3_way_curve(&mut commands);
@@ -50,13 +52,14 @@ fn test_scenes(mut commands: Commands) {
 }
 
 fn test_move(
-    mut q_curve: Query<&mut Transform, With<CurveParent>>,
+    mut q_curve: Query<&mut Transform, With<Camera>>,
     time: Res<Time>,
 ) {
     for mut t in q_curve.iter_mut() {
         let (y, x) = time.elapsed_secs().sin_cos();
         
-        t.translation = Vec3::new(x * 100.0, y * 100.0, 0.0);
+        t.rotate_local_z(1.0 * time.delta_secs());
+        // t.translation = Vec3::new(x * 100.0, y * 100.0, 0.0) + Vec3::new(200.0, 120.0, 0.0);
     }
 }
 
