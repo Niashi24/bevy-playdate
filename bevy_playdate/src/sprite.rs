@@ -2,7 +2,7 @@ use alloc::rc::Rc;
 use alloc::vec::Vec;
 use core::cell::LazyCell;
 use bevy_app::{App, Plugin, PostUpdate};
-use bevy_ecs::component::{Component, ComponentId};
+use bevy_ecs::component::{Component, ComponentId, HookContext};
 use bevy_ecs::entity::Entity;
 use bevy_ecs::prelude::require;
 use bevy_ecs::world::DeferredWorld;
@@ -38,11 +38,11 @@ pub struct Sprite {
     bitmap: Rc<Bitmap>,
 }
 
-fn add_to_display_list(w: DeferredWorld, e: Entity, _: ComponentId) {
+fn add_to_display_list(w: DeferredWorld, HookContext { entity: e, .. }: HookContext) {
     w.get::<Sprite>(e).unwrap().add();
 }
 
-fn remove_from_display_list(w: DeferredWorld, e: Entity, _: ComponentId) {
+fn remove_from_display_list(w: DeferredWorld, HookContext { entity: e, .. }: HookContext) {
     w.get::<Sprite>(e).unwrap().remove();
 }
 
