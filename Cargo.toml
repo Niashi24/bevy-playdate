@@ -18,7 +18,7 @@ members = [
 
 [dependencies]
 playdate = "*"
-bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect"] }
+bevy_ecs = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy_reflect", "portable-atomic"] }
 bevy_app = { git = "https://github.com/bevyengine/bevy", default-features = false }
 bevy_math = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["libm", "alloc"] }
 bevy_reflect = { git = "https://github.com/bevyengine/bevy", default-features = false, features = ["bevy"]}
@@ -34,6 +34,9 @@ derive_more = { version = "1.0.0", default-features = false, features = ["full"]
 num-traits = { version = "0.2.19", default-features = false, features = ["libm"] }
 smallvec = { version = "1.13.2" }
 portable-atomic = "1.10.0"
+tiled = { git = "https://github.com/Niashi24/rs-tiled.git", branch = "nostd" }
+xml-rs = { git = "https://github.com/Niashi24/xml-rs.git", branch = "no_std" }
+no_std_io2 = { version = "0.9.0", features = ["alloc"] }
 
 # Playdate Package Info
 # doc: https://github.com/boozook/playdate/blob/main/support/build/README.md#metadata
@@ -55,6 +58,8 @@ launch-sound-path = "sfx/jump"
 # Assets Rules
 # doc: https://github.com/boozook/playdate/blob/main/support/build/README.md#assets
 [package.metadata.playdate.assets]
+"xml/test.tmx" = "./assets/colliders_and_user_properties.export.tmx"
+"test/tileset.tsx" = "./assets/Tileset1.tsx"
 #"img/system/" = "${PLAYDATE_SDK_PATH}/Examples/Game Template/Source/SystemAssets/*.png"
 #"sfx/jump.wav" = "${PLAYDATE_SDK_PATH}/Examples/Level 1-1/Source/sfx/jump.wav"
 # This is a complex way of specifying what assets should be included.

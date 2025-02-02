@@ -10,6 +10,7 @@ mod curve;
 mod game;
 mod ui_test;
 mod test_scenes;
+mod tiled;
 
 use bevy_app::{App, PostUpdate};
 use bevy_playdate::{DefaultPlugins, event::SystemEvent};

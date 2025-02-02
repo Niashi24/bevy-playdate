@@ -9,6 +9,7 @@ pub mod view;
 pub mod event;
 pub mod angle;
 mod utils;
+pub mod file;
 
 extern crate alloc;
 

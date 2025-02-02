@@ -1,10 +1,13 @@
 use crate::builder::CurveParent;
 use crate::curve::{CurveQuery, Joint};
+use crate::tiled::PlaydateReader;
 use alloc::format;
 use bevy_app::{App, Plugin, PostUpdate, Startup, Update};
 use bevy_ecs::prelude::*;
 use bevy_math::Dir2;
+use bevy_playdate::dbg;
 use bevy_playdate::debug::in_debug;
+use bevy_playdate::file::FileHandle;
 use bevy_playdate::input::CrankInput;
 use bevy_playdate::sprite::Sprite;
 use bevy_playdate::time::Time;
@@ -12,13 +15,16 @@ use bevy_transform::prelude::Transform;
 use curve::roots::{quadratic, SolutionIter};
 use curve::traits::CurveSegment;
 use glam::{Vec2, Vec3};
+use no_std_io2::io::BufReader;
 use num_traits::float::{Float, TotalOrder};
+use pd::fs::FileOptions;
 use pd::graphics::bitmap::LCDColorConst;
 use pd::graphics::text::draw_text;
 use pd::graphics::{draw_ellipse, draw_rect, Graphics};
 use pd::sprite::draw_sprites;
 use pd::sys::ffi::LCDColor;
 use bevy_playdate::view::Camera;
+use tiled::Loader;
 
 pub struct GamePlugin;
 
@@ -44,6 +50,10 @@ fn test_scenes(mut commands: Commands) {
     commands.spawn((
         Camera,
     ));
+
+    let set = Loader::with_reader(PlaydateReader)
+        .load_tsx_tileset("test/tileset.tsx")
+        .unwrap();
     
     crate::test_scenes::test_builder(&mut commands);
     crate::test_scenes::test_branch(&mut commands);
@@ -55,12 +65,12 @@ fn test_move(
     mut q_curve: Query<&mut Transform, With<Camera>>,
     time: Res<Time>,
 ) {
-    for mut t in q_curve.iter_mut() {
-        let (y, x) = time.elapsed_secs().sin_cos();
-        
-        t.rotate_local_z(1.0 * time.delta_secs());
-        // t.translation = Vec3::new(x * 100.0, y * 100.0, 0.0) + Vec3::new(200.0, 120.0, 0.0);
-    }
+    // for mut t in q_curve.iter_mut() {
+    //     let (y, x) = time.elapsed_secs().sin_cos();
+    //     
+    //     t.rotate_local_z(1.0 * time.delta_secs());
+    //     // t.translation = Vec3::new(x * 100.0, y * 100.0, 0.0) + Vec3::new(200.0, 120.0, 0.0);
+    // }
 }
 
 #[derive(Component, Debug, PartialEq, Copy, Clone)]
